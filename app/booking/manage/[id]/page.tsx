@@ -9,7 +9,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { format, parseISO, differenceInHours } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Calendar, Clock, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, Phone, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 type Booking = {
@@ -186,14 +186,27 @@ export default function ManageBookingPage() {
             <p className="text-sm text-[#CCC]">Dieser Termin ist bereits vergangen.</p>
           </div>
         ) : tooLate ? (
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 flex gap-4">
-            <AlertTriangle size={20} className="text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 mb-1">Stornierung nicht mehr möglich</p>
-              <p className="text-xs text-amber-600 leading-relaxed">
-                Kostenlose Stornierungen sind bis 24 Stunden vor dem Termin möglich.
-                Ihr Termin ist in weniger als 24 Stunden.
-              </p>
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 flex gap-4">
+              <AlertTriangle size={20} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 mb-1">Änderung nicht mehr möglich</p>
+                <p className="text-xs text-amber-600 leading-relaxed">
+                  Kostenlose Stornierungen und Umbuchungen sind bis <strong>24 Stunden</strong> vor dem Termin möglich.
+                  Ihr Termin ist in weniger als 24 Stunden — bitte kontaktieren Sie uns direkt.
+                </p>
+              </div>
+            </div>
+            <div className="border border-[#EFEFEF] rounded-xl p-6 space-y-3">
+              <p className="text-[9px] uppercase tracking-[0.3em] font-bold text-[#CCC]">Studio direkt kontaktieren</p>
+              <a href="tel:+49123456789" className="flex items-center gap-3 text-sm text-[#444] hover:text-brand-ink transition-colors">
+                <Phone size={14} className="text-brand-ink" />
+                +49 123 456789
+              </a>
+              <a href="mailto:hello@studio-blanco.de" className="flex items-center gap-3 text-sm text-[#444] hover:text-brand-ink transition-colors">
+                <Mail size={14} className="text-brand-ink" />
+                hello@studio-blanco.de
+              </a>
             </div>
           </div>
         ) : canCancel ? (
