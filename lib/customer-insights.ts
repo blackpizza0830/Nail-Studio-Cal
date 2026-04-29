@@ -1,4 +1,4 @@
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 
 export type BookingLite = {
   id: string;
@@ -74,22 +74,6 @@ export function nextAppointment(bookings: BookingLite[]): BookingLite | null {
     (b) => b.status === 'confirmed' && b.date >= day
   );
   return upcoming.length ? upcoming[0]! : null;
-}
-
-export function visitRhythmWeeks(bookings: BookingLite[]): string | null {
-  const confirmed = sortBookingsChrono(bookings).filter((b) => b.status === 'confirmed');
-  if (confirmed.length < 2) return null;
-  const gaps: number[] = [];
-  for (let i = 1; i < confirmed.length; i++) {
-    const a = parseISO(confirmed[i - 1]!.date);
-    const b = parseISO(confirmed[i]!.date);
-    gaps.push(differenceInDays(b, a));
-  }
-  const avg = gaps.reduce((s, g) => s + g, 0) / gaps.length;
-  if (!Number.isFinite(avg) || avg <= 0) return null;
-  const weeks = Math.round(avg / 7);
-  if (weeks < 1) return '~1 Woche';
-  return `~${weeks} Wochen`;
 }
 
 export function preferredServiceLabel(bookings: BookingLite[]): string {

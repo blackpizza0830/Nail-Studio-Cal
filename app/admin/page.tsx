@@ -42,7 +42,6 @@ import {
   bookingsForEmail,
   lastPastVisit,
   nextAppointment,
-  visitRhythmWeeks,
   preferredServiceLabel,
   totalVisitsAndRevenue,
   whatsappHref,
@@ -68,7 +67,6 @@ type CustomerDb = {
   allergyNote?: string;
   memo?: string;
   photoUrl?: string;
-  designThumbUrls?: unknown;
   vip?: boolean;
 };
 
@@ -94,11 +92,6 @@ function formatFirestoreDate(v: unknown): string {
     }
   }
   return '—';
-}
-
-function parseDesignThumbs(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((u): u is string => typeof u === 'string' && u.startsWith('http'));
 }
 
 export default function AdminPage() {
@@ -155,7 +148,6 @@ function AdminDashboard() {
     allergyNote: '',
     memo: '',
     photoUrl: '',
-    designThumbLines: '',
     vip: false,
   });
   const [savingCustomer, setSavingCustomer] = useState(false);
@@ -188,12 +180,10 @@ function AdminDashboard() {
       return;
     }
     setEditCustomer(c);
-    const thumbs = parseDesignThumbs(c.designThumbUrls);
     setCustomerEditForm({
       allergyNote: c.allergyNote || '',
       memo: c.memo || '',
       photoUrl: c.photoUrl || '',
-      designThumbLines: thumbs.join('\n'),
       vip: !!c.vip,
     });
   };
@@ -202,16 +192,10 @@ function AdminDashboard() {
     if (!editCustomer) return;
     setSavingCustomer(true);
     try {
-      const designThumbUrls = customerEditForm.designThumbLines
-        .split('\n')
-        .map((s) => s.trim())
-        .filter((s) => s.startsWith('http'))
-        .slice(0, 4);
       await updateDoc(doc(db, 'customers', editCustomer.id), {
         allergyNote: customerEditForm.allergyNote.trim() || '',
         memo: customerEditForm.memo.trim() || '',
         photoUrl: customerEditForm.photoUrl.trim() || '',
-        designThumbUrls,
         vip: customerEditForm.vip,
       });
       setEditCustomer(null);
@@ -623,7 +607,7 @@ function AdminDashboard() {
                     <h2 className="text-2xl font-serif italic mb-2">Kundenverwaltung</h2>
                     <p className="text-[11px] text-[#999] max-w-xl leading-relaxed">
                       Profildaten aus Firebase; Termine aus Buchungen. Sperrzeiten & Verfügbarkeit nur in Cal.com.
-                      Umsatz-Schätzung aus Leistungspreisen (Cal-Titel wird mit CMS gematcht).
+                      Umsatz-Schätzung aus Leistungspreisen (Cal-Titel wird mit der Leistungsliste gematcht).
                     </p>
                   </div>
                   <div className="relative w-full lg:w-80">
@@ -651,7 +635,6 @@ function AdminDashboard() {
                       const { visits, euros } = totalVisitsAndRevenue(row.bookings, cmsForPricing);
                       const last = lastPastVisit(row.bookings);
                       const next = nextAppointment(row.bookings);
-                      const rhythm = visitRhythmWeeks(row.bookings);
                       const preferred = preferredServiceLabel(row.bookings);
                       const wa = whatsappHref(row.phone);
                       const visitCount = d?.visitCount ?? visits;
@@ -661,7 +644,6 @@ function AdminDashboard() {
                         .filter((b) => b.status === 'confirmed')
                         .slice(-4)
                         .reverse();
-                      const thumbs = parseDesignThumbs(d?.designThumbUrls);
                       const allergy = d?.allergyNote?.trim();
                       const memo = d?.memo?.trim();
                       const lastDisplay = last
@@ -740,10 +722,6 @@ function AdminDashboard() {
                                 {visits}× / ca. €{euros}
                               </span>
                             </div>
-                            <div className="flex justify-between gap-4">
-                              <span className="text-[#999] uppercase tracking-wider font-bold shrink-0">Rhythmus</span>
-                              <span className="font-medium text-right text-xs">{rhythm || '—'}</span>
-                            </div>
                           </div>
 
                           <div className="px-6 py-4 space-y-3 text-[11px] border-b border-[#F5F5F5]">
@@ -778,28 +756,6 @@ function AdminDashboard() {
                                 </ul>
                               </div>
                             )}
-                          </div>
-
-                          <div className="px-6 py-4 border-b border-[#F5F5F5]">
-                            <p className="text-[9px] uppercase tracking-widest font-bold text-[#BBB] mb-2">Referenz (max. 4 Fotos)</p>
-                            <div className="grid grid-cols-4 gap-2">
-                              {[0, 1, 2, 3].map((i) => (
-                                <div
-                                  key={i}
-                                  className="aspect-square rounded-lg bg-[#F4F4F4] border border-[#EBEBEB] overflow-hidden"
-                                >
-                                  {thumbs[i] ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={thumbs[i]} alt="" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-[#CCC] text-center px-1">
-                                      —
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            <p className="text-[9px] text-[#BBB] mt-2">URLs im Bearbeiten-Dialog eintragen (z. B. von Instagram oder Cloud).</p>
                           </div>
 
                           <div className="px-6 py-4 mt-auto flex flex-wrap gap-2">
@@ -1059,15 +1015,6 @@ function AdminDashboard() {
                   onChange={(e) => setCustomerEditForm((f) => ({ ...f, memo: e.target.value }))}
                   className="mt-1 w-full sleek-border p-3 text-xs min-h-[88px]"
                   placeholder="Vorlieben, Stil, interne Hinweise…"
-                />
-              </label>
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-widest font-bold text-[#999]">Referenz-Fotos (max. 4 URLs, eine Zeile pro Bild)</span>
-                <textarea
-                  value={customerEditForm.designThumbLines}
-                  onChange={(e) => setCustomerEditForm((f) => ({ ...f, designThumbLines: e.target.value }))}
-                  className="mt-1 w-full sleek-border p-3 text-xs min-h-[72px] font-mono"
-                  placeholder={'https://…\nhttps://…'}
                 />
               </label>
               <div className="flex gap-3 pt-2">
