@@ -1,0 +1,57 @@
+{
+  "entities": {
+    "service": {
+      "title": "Service",
+      "description": "A treatment offered by the studio",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "string" },
+        "duration": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["name", "price", "duration"]
+    },
+    "customer": {
+      "title": "Customer",
+      "description": "User profile for CRM and loyalty tracking",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "points": { "type": "integer" },
+        "lastVisit": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "name"]
+    },
+    "gallery_item": {
+      "title": "Gallery Item",
+      "description": "Images for the aesthetic grid",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "alt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url"]
+    }
+  },
+  "firestore": {
+    "services": {
+      "schema": "service",
+      "description": "List of available treatments"
+    },
+    "customers": {
+      "schema": "customer",
+      "description": "Customer database for CRM"
+    },
+    "gallery": {
+      "schema": "gallery_item",
+      "description": "Collection of gallery images"
+    }
+  }
+}

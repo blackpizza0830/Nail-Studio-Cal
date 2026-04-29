@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-serif: var(--font-cormorant), ui-serif, Georgia;
+  
+  --color-brand-ink: #1a1a1a;
+  --color-brand-gray: #666;
+  --color-brand-border: #f5f5f5;
+  --color-brand-bg: #fafafa;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-white text-brand-ink antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+.minimal-button {
+  @apply w-full bg-black text-white py-4 px-8 text-[11px] uppercase tracking-[0.2em] font-medium transition-all duration-300 hover:bg-zinc-800;
+}
+
+.sleek-border {
+  @apply border border-brand-border;
+}
+
+.sleek-card {
+  @apply bg-white border border-[#eeeeee] p-8 shadow-sm transition-shadow hover:shadow-md;
+}
+
+.service-item-card {
+  @apply p-4 border border-[#e5e5e5] flex justify-between items-center cursor-pointer transition-all duration-300 hover:border-black;
+}
+
+.service-item-card.active {
+  @apply bg-black text-white border-black;
+}
