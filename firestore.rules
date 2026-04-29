@@ -2,63 +2,57 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 0. Default Deny catch-all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // --- Helper Functions ---
     function isSignedIn() { return request.auth != null; }
-    function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
 
-    // --- Services Collection (Public Read, Admin Write) ---
-    // Note: Admin feature can be added later by checking a dedicated 'admins' collection
+    // Services — public read, server-side write via Admin SDK (bypasses rules)
     match /services/{serviceId} {
       allow read: if true;
-      allow write: if false; // System/Admin managed
+      allow write: if false;
     }
 
-    // --- Customers Collection (Private PII) ---
+    // Gallery — public read, server-side write via Admin SDK
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Customers — server-side read/write via Admin SDK; client-side upsert allowed
     function isValidCustomer(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.email is string && data.email.size() > 5 && data.email.size() <= 100 &&
-             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
-             (!('points' in data) || data.points is int);
+      return data.name is string && data.name.size() > 0 &&
+             data.email is string && data.email.size() > 5;
+    }
+    match /customers/{customerId} {
+      allow read: if false;
+      allow create: if isValidCustomer(incoming());
+      allow update: if isValidCustomer(incoming());
     }
 
-    match /customers/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Browsing customers not allowed
-      allow create: if isOwner(userId) && isValidCustomer(incoming()) && (incoming().points == 0 || !('points' in incoming()));
-      allow update: if isOwner(userId) && isValidCustomer(incoming()) && 
-                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'birthDate']);
-    }
-
-    // --- Bookings Collection ---
+    // Bookings — public create/read, update for cancellations
     function isValidBooking(data) {
       return data.serviceId is string &&
              data.serviceName is string &&
              data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
-             data.time is string && data.time.matches('^[0-9]{2}:[0-9]{2}$') &&
-             data.customerName is string && data.customerName.size() <= 100 &&
-             data.customerEmail is string && data.customerEmail.size() <= 100 &&
+             data.time is string &&
+             data.customerName is string &&
+             data.customerEmail is string &&
              data.status in ['confirmed', 'cancelled'];
     }
-
     match /bookings/{bookingId} {
       allow create: if isValidBooking(incoming()) && incoming().status == 'confirmed';
-      allow read: if true; // In production, restrict to admin or owner
-      allow update: if true; // In production, restrict to admin
+      allow read: if true;
+      allow update: if true;
     }
 
-    // --- Blocked Times Collection ---
+    // Blocked times — public read, signed-in write
     match /blocked_times/{blockId} {
-      allow read: if true; // Publicly readable for availability checking
-      allow write: if isSignedIn(); // Restricted to signed in users (Admin)
+      allow read: if true;
+      allow write: if isSignedIn();
     }
   }
 }

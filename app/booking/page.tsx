@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc, setDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { ChevronLeft, Check, Loader2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -80,7 +80,9 @@ function BookingContent() {
 
   useEffect(() => {
     if (rescheduleId) {
-      setForm(prev => ({ ...prev, note: `Umbuchung von Termin ID: ${rescheduleId}` })); // eslint-disable-line react-hooks/set-state-in-effect
+      // Auto-cancel the old booking when rescheduling
+      updateDoc(doc(db, 'bookings', rescheduleId), { status: 'cancelled' }).catch(console.error);
+      setForm(prev => ({ ...prev, note: `Umbuchung von Termin ID: ${rescheduleId}` }));
     }
   }, [rescheduleId]);
 
@@ -93,11 +95,12 @@ function BookingContent() {
   const handleBooking = async () => {
     if (!selectedTime) return;
     setLoading(true);
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
     try {
       const docRef = await addDoc(collection(db, 'bookings'), {
         serviceId: selectedService.id,
         serviceName: selectedService.name,
-        date: format(selectedDate, 'yyyy-MM-dd'),
+        date: dateStr,
         time: selectedTime,
         customerName: form.name,
         customerEmail: form.email,
@@ -107,10 +110,49 @@ function BookingContent() {
         createdAt: serverTimestamp(),
       });
       setLastBookingId(docRef.id);
+
+      // Upsert customer record
+      const customerId = form.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const customerRef = doc(db, 'customers', customerId);
+      const customerSnap = await getDoc(customerRef);
+      if (customerSnap.exists()) {
+        await updateDoc(customerRef, {
+          lastVisit: serverTimestamp(),
+          visitCount: increment(1),
+          points: increment(10),
+          phone: form.phone,
+        });
+      } else {
+        await setDoc(customerRef, {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          points: 10,
+          visitCount: 1,
+          createdAt: serverTimestamp(),
+          lastVisit: serverTimestamp(),
+        });
+      }
+
+      // Send confirmation email
+      fetch('/api/email/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: docRef.id,
+          customerName: form.name,
+          customerEmail: form.email,
+          customerPhone: form.phone,
+          serviceName: selectedService.name,
+          date: dateStr,
+          time: selectedTime,
+        }),
+      }).catch(console.error);
+
       setStep('success');
     } catch (error) {
       console.error("Booking error:", error);
-      alert("Something went wrong. Please try again.");
+      alert("Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
     } finally {
       setLoading(false);
     }

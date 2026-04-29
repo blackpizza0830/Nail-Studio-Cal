@@ -64,6 +64,19 @@ export default function ManageBookingPage() {
       await updateDoc(doc(db, 'bookings', id), { status: 'cancelled' });
       setBooking({ ...booking, status: 'cancelled' });
       setMessage({ type: 'success', text: 'Ihre Reservierung wurde erfolgreich storniert.' });
+
+      // Send cancellation email
+      fetch('/api/email/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: booking.customerName,
+          customerEmail: booking.customerEmail,
+          serviceName: booking.serviceName,
+          date: booking.date,
+          time: booking.time,
+        }),
+      }).catch(console.error);
     } catch (error) {
       console.error(error);
       setMessage({ type: 'error', text: 'Stornierung fehlgeschlagen. Bitte versuchen Sie es später erneut.' });

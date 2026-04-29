@@ -13,11 +13,9 @@ import {
   Users, 
   Calendar, 
   TrendingUp, 
-  Settings, 
   Clock, 
   CheckCircle2, 
   XCircle, 
-  MoreVertical,
   Search,
   LayoutDashboard,
   UserCheck,
@@ -25,10 +23,20 @@ import {
   ShieldAlert,
   Trash2,
   Plus,
-  Loader2
+  Loader2,
+  ImageIcon,
+  Pencil,
+  X,
+  Upload,
+  MoreVertical,
 } from 'lucide-react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
-type Tab = 'overview' | 'bookings' | 'customers' | 'services' | 'blocking';
+type Tab = 'overview' | 'bookings' | 'customers' | 'services' | 'gallery' | 'blocking';
+
+type CmsService = { id: string; name: string; price: string; duration: string; description?: string; category?: string };
+type GalleryItem = { id: string; url: string; alt: string };
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -40,6 +48,19 @@ export default function AdminPage() {
   // Form for blocking
   const [blockForm, setBlockForm] = useState({ date: format(new Date(), 'yyyy-MM-dd'), time: '', note: '' });
   const [isBlockingLoading, setIsBlockingLoading] = useState(false);
+
+  // Services CMS
+  const [cmsServices, setCmsServices] = useState<CmsService[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [editingService, setEditingService] = useState<CmsService | null>(null);
+  const [serviceForm, setServiceForm] = useState({ name: '', price: '', duration: '', description: '', category: 'Nägel' });
+  const [showServiceForm, setShowServiceForm] = useState(false);
+
+  // Gallery CMS
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [galleryAlt, setGalleryAlt] = useState('');
 
   useEffect(() => {
     const q = query(collection(db, 'bookings'), orderBy('date', 'desc'));
@@ -103,6 +124,77 @@ export default function AdminPage() {
     }
   };
 
+  const loadServices = async () => {
+    setServicesLoading(true);
+    try {
+      const res = await fetch('/api/services');
+      const data = await res.json();
+      setCmsServices(data.services || []);
+    } catch (e) { console.error(e); }
+    finally { setServicesLoading(false); }
+  };
+
+  const loadGallery = async () => {
+    setGalleryLoading(true);
+    try {
+      const res = await fetch('/api/gallery');
+      const data = await res.json();
+      setGalleryItems(data.items || []);
+    } catch (e) { console.error(e); }
+    finally { setGalleryLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'services') loadServices();
+    if (activeTab === 'gallery') loadGallery();
+  }, [activeTab]);
+
+  const handleSaveService = async () => {
+    const isEdit = !!editingService;
+    const url = isEdit ? `/api/services/${editingService.id}` : '/api/services';
+    const method = isEdit ? 'PUT' : 'POST';
+    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(serviceForm) });
+    setShowServiceForm(false);
+    setEditingService(null);
+    setServiceForm({ name: '', price: '', duration: '', description: '', category: 'Nägel' });
+    loadServices();
+  };
+
+  const handleDeleteService = async (id: string) => {
+    if (!confirm('Diese Leistung wirklich löschen?')) return;
+    await fetch(`/api/services/${id}`, { method: 'DELETE' });
+    loadServices();
+  };
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    task.on('state_changed',
+      (snap) => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      (err) => { console.error(err); setUploadProgress(null); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        await fetch('/api/gallery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, alt: galleryAlt }),
+        });
+        setUploadProgress(null);
+        setGalleryAlt('');
+        e.target.value = '';
+        loadGallery();
+      }
+    );
+  };
+
+  const handleDeleteGallery = async (id: string) => {
+    if (!confirm('Dieses Bild wirklich löschen?')) return;
+    await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+    loadGallery();
+  };
+
   useEffect(() => {
     const qBlocks = query(collection(db, 'blocked_times'), orderBy('date', 'asc'));
     const unsubscribeBlocks = onSnapshot(qBlocks, (snapshot) => {
@@ -163,20 +255,23 @@ export default function AdminPage() {
 
         {/* Tab Navigation */}
         <div className="flex gap-6 mb-12 overflow-x-auto pb-2 scrollbar-none border-b border-[#F0F0F0]">
-          {(['overview', 'bookings', 'customers', 'services', 'blocking'] as const).map((tab) => (
+          {([
+            { key: 'overview', label: 'Übersicht', icon: LayoutDashboard },
+            { key: 'bookings', label: 'Termine', icon: Calendar },
+            { key: 'customers', label: 'Kunden', icon: UserCheck },
+            { key: 'services', label: 'Leistungen', icon: Scissors },
+            { key: 'gallery', label: 'Galerie', icon: ImageIcon },
+            { key: 'blocking', label: 'Sperrzeiten', icon: ShieldAlert },
+          ] as const).map(({ key, label, icon: Icon }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={key}
+              onClick={() => setActiveTab(key)}
               className={`pb-4 px-2 text-[10px] uppercase tracking-[0.2em] font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                activeTab === tab ? 'text-brand-ink border-b-2 border-brand-ink' : 'text-[#BBB] hover:text-[#888]'
+                activeTab === key ? 'text-brand-ink border-b-2 border-brand-ink' : 'text-[#BBB] hover:text-[#888]'
               }`}
             >
-              {tab === 'overview' && <LayoutDashboard size={12} />}
-              {tab === 'bookings' && <Calendar size={12} />}
-              {tab === 'customers' && <UserCheck size={12} />}
-              {tab === 'services' && <Scissors size={12} />}
-              {tab === 'blocking' && <ShieldAlert size={12} />}
-              {tab === 'overview' ? 'Übersicht' : tab === 'bookings' ? 'Termine' : tab === 'customers' ? 'Kunden' : tab === 'services' ? 'Leistungen' : 'Sperrzeiten'}
+              <Icon size={12} />
+              {label}
             </button>
           ))}
         </div>
@@ -395,35 +490,158 @@ export default function AdminPage() {
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-8"
               >
-                <div className="flex justify-between items-center mb-8">
+                <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-serif italic">Leistungsmanagement</h2>
-                  <button className="minimal-button py-2 px-6 text-[10px]">+ Neue Leistung</button>
+                  <button
+                    onClick={() => { setEditingService(null); setServiceForm({ name: '', price: '', duration: '', description: '', category: 'Nägel' }); setShowServiceForm(true); }}
+                    className="minimal-button py-2 px-6 text-[10px] flex items-center gap-2"
+                  >
+                    <Plus size={12} /> Neue Leistung
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {[
-                    { name: 'Shellac Maniküre', price: '45 €', duration: '60 Min', popularity: 'Hoch' },
-                    { name: 'Gel Neumodellage', price: '65 €', duration: '90 Min', popularity: 'Mittel' },
-                    { name: 'Lash Lift', price: '60 €', duration: '60 Min', popularity: 'Gefragt' },
-                    { name: 'Brow Lamination', price: '50 €', duration: '45 Min', popularity: 'Neu' },
-                  ].map((s, i) => (
-                    <div key={i} className="p-8 bg-white border border-[#F0F0F0] rounded-lg group hover:border-brand-ink transition-all">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h3 className="text-lg font-serif mb-1">{s.name}</h3>
-                          <p className="text-[10px] text-[#999] uppercase tracking-widest font-bold">{s.duration} Dauer</p>
-                        </div>
-                        <p className="text-xl font-serif text-brand-ink">{s.price}</p>
+                {/* Service Form */}
+                {showServiceForm && (
+                  <div className="p-8 bg-white border border-brand-ink rounded-lg">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-serif italic text-lg">{editingService ? 'Leistung bearbeiten' : 'Neue Leistung'}</h3>
+                      <button onClick={() => setShowServiceForm(false)}><X size={16} className="text-[#999]" /></button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold block mb-2">Name *</label>
+                        <input value={serviceForm.name} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} className="w-full sleek-border p-3 text-sm focus:outline-none focus:border-brand-ink" placeholder="Shellac Maniküre" />
                       </div>
-                      <div className="flex justify-between items-center pt-6 border-t border-[#F9F9F9]">
-                         <span className="text-[9px] uppercase tracking-[0.2em] font-bold px-2 py-1 bg-zinc-100 rounded">{s.popularity}</span>
-                         <button className="text-[9px] uppercase tracking-widest font-bold text-[#CCC] hover:text-brand-ink transition-colors">Bearbeiten</button>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold block mb-2">Preis *</label>
+                        <input value={serviceForm.price} onChange={e => setServiceForm({...serviceForm, price: e.target.value})} className="w-full sleek-border p-3 text-sm focus:outline-none focus:border-brand-ink" placeholder="45 €" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold block mb-2">Dauer *</label>
+                        <input value={serviceForm.duration} onChange={e => setServiceForm({...serviceForm, duration: e.target.value})} className="w-full sleek-border p-3 text-sm focus:outline-none focus:border-brand-ink" placeholder="60 Min" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold block mb-2">Kategorie</label>
+                        <select value={serviceForm.category} onChange={e => setServiceForm({...serviceForm, category: e.target.value})} className="w-full sleek-border p-3 text-sm focus:outline-none focus:border-brand-ink bg-white">
+                          {['Nägel', 'Wimpern', 'Augenbrauen', 'Pflege', 'Sonstiges'].map(c => <option key={c}>{c}</option>)}
+                        </select>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="mb-6">
+                      <label className="text-[10px] uppercase tracking-widest font-bold block mb-2">Beschreibung</label>
+                      <input value={serviceForm.description} onChange={e => setServiceForm({...serviceForm, description: e.target.value})} className="w-full sleek-border p-3 text-sm focus:outline-none focus:border-brand-ink" placeholder="Kurze Beschreibung..." />
+                    </div>
+                    <button onClick={handleSaveService} className="minimal-button py-3 px-8 text-[10px]">
+                      {editingService ? 'Speichern' : 'Erstellen'}
+                    </button>
+                  </div>
+                )}
+
+                {servicesLoading ? (
+                  <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-[#CCC]" /></div>
+                ) : cmsServices.length === 0 ? (
+                  <div className="py-20 text-center text-[#CCC] italic">Noch keine Leistungen. Erstellen Sie die erste.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {cmsServices.map((s) => (
+                      <div key={s.id} className="p-8 bg-white border border-[#F0F0F0] rounded-lg hover:border-brand-ink transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-serif mb-1">{s.name}</h3>
+                            <p className="text-[10px] text-[#999] uppercase tracking-widest font-bold">{s.duration} · {s.category}</p>
+                            {s.description && <p className="text-xs text-[#999] mt-2">{s.description}</p>}
+                          </div>
+                          <p className="text-xl font-serif text-brand-ink shrink-0 ml-4">{s.price}</p>
+                        </div>
+                        <div className="flex gap-4 pt-4 border-t border-[#F9F9F9]">
+                          <button
+                            onClick={() => { setEditingService(s); setServiceForm({ name: s.name, price: s.price, duration: s.duration, description: s.description || '', category: s.category || 'Nägel' }); setShowServiceForm(true); }}
+                            className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-bold text-[#999] hover:text-brand-ink transition-colors"
+                          >
+                            <Pencil size={10} /> Bearbeiten
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(s.id)}
+                            className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-bold text-[#CCC] hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={10} /> Löschen
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
+            {activeTab === 'gallery' && (
+              <motion.div
+                key="gallery"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-8"
+              >
+                <h2 className="text-2xl font-serif italic">Galerie verwalten</h2>
+
+                {/* Upload area */}
+                <div className="p-8 bg-white border border-[#F0F0F0] rounded-lg">
+                  <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#999] mb-6">Neues Bild hochladen</h3>
+                  <div className="flex flex-col md:flex-row gap-4 items-start">
+                    <div className="flex-1">
+                      <label className="text-[10px] uppercase tracking-widest font-bold block mb-2">Beschreibung (Alt-Text)</label>
+                      <input
+                        value={galleryAlt}
+                        onChange={e => setGalleryAlt(e.target.value)}
+                        className="w-full sleek-border p-3 text-sm focus:outline-none focus:border-brand-ink"
+                        placeholder="z.B. Shellac Maniküre in Rosé-Gold"
+                      />
+                    </div>
+                    <div className="shrink-0">
+                      <label className="text-[10px] uppercase tracking-widest font-bold block mb-2 opacity-0">Upload</label>
+                      <label className="minimal-button py-3 px-6 text-[10px] flex items-center gap-2 cursor-pointer">
+                        <Upload size={12} />
+                        {uploadProgress !== null ? `${uploadProgress}%` : 'Bild wählen'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadProgress !== null} />
+                      </label>
+                    </div>
+                  </div>
+                  {uploadProgress !== null && (
+                    <div className="mt-4 h-1 bg-zinc-100 rounded overflow-hidden">
+                      <div className="h-full bg-brand-ink transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Gallery grid */}
+                {galleryLoading ? (
+                  <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-[#CCC]" /></div>
+                ) : galleryItems.length === 0 ? (
+                  <div className="py-20 text-center text-[#CCC] italic">Noch keine Bilder. Laden Sie das erste Bild hoch.</div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {galleryItems.map((item) => (
+                      <div key={item.id} className="relative group aspect-square bg-zinc-50 border border-[#F0F0F0] rounded-lg overflow-hidden">
+                        <Image src={item.url} alt={item.alt || 'Gallery'} fill className="object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            onClick={() => handleDeleteGallery(item.id)}
+                            className="bg-white text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        {item.alt && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-2">
+                            <p className="text-white text-[9px] truncate">{item.alt}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {activeTab === 'blocking' && (
               <motion.div
                 key="blocking"
