@@ -15,7 +15,7 @@ import Link from 'next/link';
 type Booking = {
   id: string;
   serviceName: string;
-  servicePrice: number;
+  servicePrice?: number;
   date: string;
   time: string;
   customerName: string;
@@ -23,6 +23,9 @@ type Booking = {
   customerPhone: string;
   note?: string;
   status: 'confirmed' | 'cancelled';
+  source?: string;
+  clientBookingUrl?: string;
+  neetoSid?: string;
 };
 
 export default function ManageBookingPage() {
@@ -144,7 +147,7 @@ export default function ManageBookingPage() {
             <div>
               <p className="text-[9px] uppercase tracking-[0.3em] font-bold text-[#CCC] mb-1">Behandlung</p>
               <p className="text-lg font-serif italic text-brand-ink">{booking.serviceName}</p>
-              {booking.servicePrice > 0 && (
+              {booking.servicePrice && booking.servicePrice > 0 && (
                 <p className="text-[11px] text-[#999] mt-0.5">{booking.servicePrice} €</p>
               )}
             </div>
@@ -211,28 +214,52 @@ export default function ManageBookingPage() {
           </div>
         ) : canCancel ? (
           <div className="space-y-3">
-            {/* Reschedule */}
-            <Link
-              href={`/booking?reschedule=${id}`}
-              className="flex items-center justify-center gap-2 w-full border border-brand-ink text-brand-ink rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-brand-bg transition-colors"
-            >
-              <RefreshCw size={14} />
-              Termin verschieben
-            </Link>
-            {/* Cancel */}
-            <button
-              onClick={handleCancel}
-              disabled={action === 'cancelling'}
-              className="flex items-center justify-center gap-2 w-full border border-[#EFEFEF] text-[#999] rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:border-red-200 hover:text-red-400 transition-colors disabled:opacity-50"
-            >
-              {action === 'cancelling' ? (
-                <><Loader2 size={14} className="animate-spin" /> Wird storniert…</>
-              ) : (
-                <><XCircle size={14} /> Termin stornieren</>
-              )}
-            </button>
-            {action === 'error' && (
-              <p className="text-center text-xs text-red-400">Fehler aufgetreten. Bitte versuchen Sie es erneut.</p>
+            {booking.source === 'neetocal' ? (
+              /* ── NeetoCal bookings: managed via neetocal ── */
+              <>
+                {booking.clientBookingUrl ? (
+                  <a
+                    href={booking.clientBookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full border border-brand-ink text-brand-ink rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-brand-bg transition-colors"
+                  >
+                    <RefreshCw size={14} />
+                    Termin verschieben / stornieren
+                  </a>
+                ) : (
+                  <div className="bg-zinc-50 border border-[#EFEFEF] rounded-xl p-6 text-center">
+                    <p className="text-sm text-[#999] leading-relaxed">
+                      Ihren Termin können Sie über den Link in Ihrer Bestätigungs-E-Mail von NeetoCal verschieben oder stornieren.
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── Legacy bookings: direct cancel ── */
+              <>
+                <Link
+                  href={`/booking?reschedule=${id}`}
+                  className="flex items-center justify-center gap-2 w-full border border-brand-ink text-brand-ink rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-brand-bg transition-colors"
+                >
+                  <RefreshCw size={14} />
+                  Termin verschieben
+                </Link>
+                <button
+                  onClick={handleCancel}
+                  disabled={action === 'cancelling'}
+                  className="flex items-center justify-center gap-2 w-full border border-[#EFEFEF] text-[#999] rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:border-red-200 hover:text-red-400 transition-colors disabled:opacity-50"
+                >
+                  {action === 'cancelling' ? (
+                    <><Loader2 size={14} className="animate-spin" /> Wird storniert…</>
+                  ) : (
+                    <><XCircle size={14} /> Termin stornieren</>
+                  )}
+                </button>
+                {action === 'error' && (
+                  <p className="text-center text-xs text-red-400">Fehler aufgetreten. Bitte versuchen Sie es erneut.</p>
+                )}
+              </>
             )}
             <p className="text-center text-[9px] uppercase tracking-widest text-[#CCC] pt-2">
               Stornierungen kostenlos bis 24h vor dem Termin
