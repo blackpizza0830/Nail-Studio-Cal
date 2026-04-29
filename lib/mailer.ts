@@ -1,11 +1,18 @@
 import nodemailer from 'nodemailer';
 
 export function getTransporter() {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  if (!user || !pass) {
+    throw new Error(`Email config missing — GMAIL_USER: ${!!user}, GMAIL_APP_PASSWORD: ${!!pass}`);
+  }
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user,
+      pass: pass.replace(/\s+/g, ''),
     },
   });
 }

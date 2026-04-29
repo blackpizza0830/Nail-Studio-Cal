@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTransporter, FROM, ADMIN_EMAIL, BASE_URL } from '@/lib/mailer';
 
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
   try {
     const { bookingId, customerName, customerEmail, customerPhone, serviceName, date, time } = await req.json();
