@@ -47,27 +47,26 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuthed(true);
-      } else {
-        router.replace('/admin/login');
-      }
+      setIsAuthed(!!user);
       setAuthChecked(true);
+      if (!user) router.replace('/admin/login');
     });
     return () => unsub();
   }, [router]);
 
   if (!authChecked) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-brand-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-[10px] uppercase tracking-widest text-[#CCC]">Laden...</p>
-      </div>
+      <div className="w-8 h-8 border-2 border-brand-ink border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   if (!isAuthed) return null;
 
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [bookings, setBookings] = useState<any[]>([]);
   const [blockedTimes, setBlockedTimes] = useState<any[]>([]);
