@@ -1,20 +1,21 @@
 'use client';
 
 import { motion } from 'motion/react';
+import Link from 'next/link';
 
 const SERVICE_CATEGORIES = [
   {
     title: "Nägel",
     items: [
-      { name: "Maniküre Klassisch",   price: "35 €",      duration: "45 min" },
-      { name: "Gel-Maniküre",         price: "48 €",      duration: "60 min" },
-      { name: "Naildesign / Nailart", price: "68 €",      duration: "90 min" },
-      { name: "Auffüllen Gel",        price: "42 €",      duration: "60 min" },
-      { name: "French Nails",         price: "55 €",      duration: "75 min" },
-      { name: "Babyboomer",           price: "58 €",      duration: "75 min" },
-      { name: "Nagelverlängerung",    price: "75 €",      duration: "120 min" },
-      { name: "Entfernung",           price: "20 €",      duration: "30 min" },
-      { name: "Beratung",             price: "Kostenlos", duration: "15 min" },
+      { id: "manikuere-klassisch",  name: "Maniküre Klassisch",   price: "35 €",      duration: "45 min" },
+      { id: "gel-manikuere",        name: "Gel-Maniküre",         price: "48 €",      duration: "60 min" },
+      { id: "naildesign-nailart",   name: "Naildesign / Nailart", price: "68 €",      duration: "90 min" },
+      { id: "auffullen-gel",        name: "Auffüllen Gel",        price: "42 €",      duration: "60 min" },
+      { id: "french-nails",         name: "French Nails",         price: "55 €",      duration: "75 min" },
+      { id: "babyboomer",           name: "Babyboomer",           price: "58 €",      duration: "75 min" },
+      { id: "nagelverlangerung",    name: "Nagelverlängerung",    price: "75 €",      duration: "120 min" },
+      { id: "entfernung",           name: "Entfernung",           price: "20 €",      duration: "30 min" },
+      { id: "beratung",             name: "Beratung",             price: "Kostenlos", duration: "15 min" },
     ]
   },
 ];
@@ -42,20 +43,22 @@ export function Services() {
               <h3 className="text-xs uppercase tracking-widest font-bold mb-8 text-zinc-400 border-b border-zinc-50 pb-4">
                 {category.title}
               </h3>
-              <div className="space-y-8">
+              <div className="space-y-4">
                 {category.items.map((item) => (
-                  <div key={item.name} className="service-item-card group">
-                    <div>
-                      <h4 className="text-sm font-medium transition-all duration-300">
-                        {item.name}
-                      </h4>
-                      <p className="text-[11px] text-brand-gray opacity-70">
-                        {item.duration} • Professional Care
-                      </p>
+                  <div key={item.name} className="flex items-center justify-between gap-4 py-4 border-b border-zinc-50 group">
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium">{item.name}</h4>
+                      <p className="text-[11px] text-brand-gray opacity-70">{item.duration} • Professional Care</p>
                     </div>
-                    <span className="text-sm font-serif italic text-brand-gray group-hover:text-brand-ink">
+                    <span className="text-sm font-serif italic text-brand-gray group-hover:text-brand-ink shrink-0">
                       {item.price}
                     </span>
+                    <Link
+                      href={`/booking?service=${item.id}`}
+                      className="shrink-0 text-[9px] uppercase tracking-widest font-bold border border-brand-ink px-3 py-2 hover:bg-brand-ink hover:text-white transition-all rounded-lg"
+                    >
+                      Buchen
+                    </Link>
                   </div>
                 ))}
               </div>
