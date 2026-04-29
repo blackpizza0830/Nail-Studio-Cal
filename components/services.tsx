@@ -12,14 +12,6 @@ const SERVICE_CATEGORIES = [
       { name: "Refill Gel", price: "65€", duration: "75 min" },
     ]
   },
-  {
-    title: "Beauty Treatments",
-    items: [
-      { name: "Lash Lift", price: "60€", duration: "60 min" },
-      { name: "Brow Lamination", price: "50€", duration: "45 min" },
-      { name: "Waxing Package", price: "45€", duration: "40 min" },
-    ]
-  }
 ];
 
 export function Services() {

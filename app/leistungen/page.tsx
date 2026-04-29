@@ -13,13 +13,6 @@ const SERVICES = [
       { name: "Gel Neumodellage", price: "85,00 €", duration: "90 Min", desc: "Verlängerung mit Schablone" },
     ]
   },
-  {
-    category: "Lashes & Brows",
-    items: [
-      { name: "Lash Lift", price: "60,00 €", duration: "60 Min", desc: "Schwung & intensive Farbe" },
-      { name: "Brow Lamination", price: "50,00 €", duration: "45 Min", desc: "Fixierung für vollere Brauen" },
-    ]
-  }
 ];
 
 export default function LeistungenPage() {
