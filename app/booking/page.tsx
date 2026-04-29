@@ -9,15 +9,15 @@ const CAL_USERNAME = 'hyeonjin-sun-park-qcbfta';
 const CAL_ORIGIN = 'https://cal.eu';
 
 const SERVICES = [
-  { name: 'Maniküre Klassisch',   slug: 'manikuere-klassisch', duration: '45 Min', price: '€ 35',  desc: 'Pflege, Form & Lack' },
-  { name: 'Gel-Maniküre',         slug: 'gel-manikuere',       duration: '60 Min', price: '€ 48',  desc: 'Langanhaltend & strapazierfähig' },
-  { name: 'Naildesign / Nailart', slug: 'naildesign-nailart',  duration: '90 Min', price: '€ 68',  desc: 'Kreative Designs & Nail Art' },
-  { name: 'Auffüllen Gel',        slug: 'auffullen-gel',       duration: '60 Min', price: '€ 42',  desc: 'Auffüllen bestehender Gelnägel' },
-  { name: 'French Nails',         slug: 'french-nails',        duration: '75 Min', price: '€ 55',  desc: 'Der Klassiker — zeitlos & elegant' },
-  { name: 'Babyboomer',           slug: 'babyboomer',          duration: '75 Min', price: '€ 58',  desc: 'Natürlicher Ombré-Look' },
-  { name: 'Nagelverlängerung',    slug: 'nagelverlaengerung',  duration: '120 Min',price: '€ 75',  desc: 'Verlängerung & Modellage' },
-  { name: 'Entfernung',           slug: 'entfernung',          duration: '30 Min', price: '€ 20',  desc: 'Schonende Gel- oder Acrylentfernung' },
-  { name: 'Beratung',             slug: 'beratung',            duration: '15 Min', price: 'Kostenlos', desc: 'Persönliche Beratung vorab' },
+  { name: 'Maniküre Klassisch',   slug: '15min',              duration: '45 Min', price: '€ 35',  desc: 'Pflege, Form & Lack' },
+  { name: 'Gel-Maniküre',         slug: '30min',              duration: '60 Min', price: '€ 48',  desc: 'Langanhaltend & strapazierfähig' },
+  { name: 'Naildesign / Nailart', slug: 'naildesign-nailart', duration: '90 Min', price: '€ 68',  desc: 'Kreative Designs & Nail Art' },
+  { name: 'Auffüllen Gel',        slug: 'auffullen-gel',      duration: '60 Min', price: '€ 42',  desc: 'Auffüllen bestehender Gelnägel' },
+  { name: 'French Nails',         slug: 'french-nails',       duration: '75 Min', price: '€ 55',  desc: 'Der Klassiker — zeitlos & elegant' },
+  { name: 'Babyboomer',           slug: 'babyboomer',         duration: '75 Min', price: '€ 58',  desc: 'Natürlicher Ombré-Look' },
+  { name: 'Nagelverlängerung',    slug: 'nagelverlangerung',  duration: '120 Min',price: '€ 75',  desc: 'Verlängerung & Modellage' },
+  { name: 'Entfernung',           slug: 'entfernung',         duration: '30 Min', price: '€ 20',  desc: 'Schonende Gel- oder Acrylentfernung' },
+  { name: 'Beratung',             slug: 'beratung',           duration: '15 Min', price: 'Kostenlos', desc: 'Persönliche Beratung vorab' },
 ];
 
 const HOURS = [
