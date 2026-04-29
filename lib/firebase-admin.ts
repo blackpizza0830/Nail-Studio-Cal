@@ -18,8 +18,8 @@ function getAdminApp() {
 }
 
 export function getAdminDb() {
-  getAdminApp();
-  return getFirestore(config.firestoreDatabaseId);
+  const app = getAdminApp();
+  return getFirestore(app, config.firestoreDatabaseId);
 }
 
 export function getAdminStorage() {
