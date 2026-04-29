@@ -32,9 +32,12 @@ type Step = 'service' | 'datetime' | 'confirm' | 'success';
 function BookingContent() {
   const searchParams = useSearchParams();
   const rescheduleId = searchParams.get('reschedule');
+  const serviceParam = searchParams.get('service');
 
-  const [step, setStep] = useState<Step>('service');
-  const [selectedService, setSelectedService] = useState(SERVICES[0]);
+  const initialService = SERVICES.find(s => s.id === serviceParam) ?? SERVICES[0];
+
+  const [step, setStep] = useState<Step>(serviceParam ? 'datetime' : 'service');
+  const [selectedService, setSelectedService] = useState(initialService);
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

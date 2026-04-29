@@ -8,15 +8,15 @@ const SERVICES = [
   {
     category: "Nägel",
     items: [
-      { name: "Maniküre Klassisch",   price: "35 €",      duration: "45 Min",  desc: "Pflege, Form & Lack" },
-      { name: "Gel-Maniküre",         price: "48 €",      duration: "60 Min",  desc: "Langanhaltend & strapazierfähig" },
-      { name: "Naildesign / Nailart", price: "68 €",      duration: "90 Min",  desc: "Kreative Designs & Nail Art" },
-      { name: "Auffüllen Gel",        price: "42 €",      duration: "60 Min",  desc: "Auffüllen bestehender Gelnägel" },
-      { name: "French Nails",         price: "55 €",      duration: "75 Min",  desc: "Der Klassiker — zeitlos & elegant" },
-      { name: "Babyboomer",           price: "58 €",      duration: "75 Min",  desc: "Natürlicher Ombré-Look" },
-      { name: "Nagelverlängerung",    price: "75 €",      duration: "120 Min", desc: "Verlängerung & Modellage" },
-      { name: "Entfernung",           price: "20 €",      duration: "30 Min",  desc: "Schonende Gel- oder Acrylentfernung" },
-      { name: "Beratung",             price: "Kostenlos", duration: "15 Min",  desc: "Persönliche Beratung vorab" },
+      { id: "manikuere-klassisch",  name: "Maniküre Klassisch",   price: "35 €",      duration: "45 Min",  desc: "Pflege, Form & Lack" },
+      { id: "gel-manikuere",        name: "Gel-Maniküre",         price: "48 €",      duration: "60 Min",  desc: "Langanhaltend & strapazierfähig" },
+      { id: "naildesign-nailart",   name: "Naildesign / Nailart", price: "68 €",      duration: "90 Min",  desc: "Kreative Designs & Nail Art" },
+      { id: "auffullen-gel",        name: "Auffüllen Gel",        price: "42 €",      duration: "60 Min",  desc: "Auffüllen bestehender Gelnägel" },
+      { id: "french-nails",         name: "French Nails",         price: "55 €",      duration: "75 Min",  desc: "Der Klassiker — zeitlos & elegant" },
+      { id: "babyboomer",           name: "Babyboomer",           price: "58 €",      duration: "75 Min",  desc: "Natürlicher Ombré-Look" },
+      { id: "nagelverlangerung",    name: "Nagelverlängerung",    price: "75 €",      duration: "120 Min", desc: "Verlängerung & Modellage" },
+      { id: "entfernung",           name: "Entfernung",           price: "20 €",      duration: "30 Min",  desc: "Schonende Gel- oder Acrylentfernung" },
+      { id: "beratung",             name: "Beratung",             price: "Kostenlos", duration: "15 Min",  desc: "Persönliche Beratung vorab" },
     ]
   },
 ];
@@ -39,17 +39,20 @@ export default function LeistungenPage() {
               </h2>
               <div className="space-y-12">
                 {cat.items.map((item) => (
-                  <div key={item.name} className="flex flex-col md:flex-row justify-between items-start gap-4">
+                  <div key={item.name} className="flex flex-col md:flex-row justify-between items-center gap-6 py-6 border-b border-[#F5F5F5] last:border-0">
                     <div className="flex-1">
-                      <div className="flex justify-between items-baseline mb-2">
+                      <div className="flex items-baseline gap-4 mb-1">
                         <h3 className="text-xl font-serif">{item.name}</h3>
-                        <span className="font-serif italic text-lg">{item.price}</span>
+                        <span className="font-serif italic text-lg text-brand-ink">{item.price}</span>
                       </div>
-                      <p className="text-sm text-zinc-500 font-light mb-2">{item.desc}</p>
-                      <span className="text-[10px] uppercase tracking-widest text-[#999]">{item.duration}</span>
+                      <p className="text-sm text-zinc-500 font-light">{item.desc}</p>
+                      <span className="text-[10px] uppercase tracking-widest text-[#CCC] mt-1 inline-block">{item.duration}</span>
                     </div>
-                    <Link href="/booking" className="text-[10px] uppercase tracking-widest font-bold border border-brand-ink px-4 py-2 hover:bg-brand-ink hover:text-white transition-all">
-                      Buchen
+                    <Link
+                      href={`/booking?service=${item.id}`}
+                      className="shrink-0 text-[10px] uppercase tracking-widest font-bold border border-brand-ink px-6 py-3 hover:bg-brand-ink hover:text-white transition-all rounded-lg whitespace-nowrap"
+                    >
+                      Buchen →
                     </Link>
                   </div>
                 ))}
