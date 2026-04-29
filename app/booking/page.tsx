@@ -2,19 +2,11 @@
 
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
-import { useEffect, useState } from 'react';
-import { Clock, Star, ChevronRight } from 'lucide-react';
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Cal?: any;
-  }
-}
+import { useState } from 'react';
+import { Clock, Star, ChevronRight, X, Loader2 } from 'lucide-react';
 
 const CAL_USERNAME = 'hyeonjin-sun-park-qcbfta';
 const CAL_ORIGIN = 'https://cal.eu';
-const CAL_EMBED_SCRIPT = 'https://app.cal.eu/embed/embed.js';
 
 const SERVICES = [
   { name: 'Maniküre Klassisch',   slug: 'manikuere-klassisch', duration: '45 Min', price: '€ 35',  desc: 'Pflege, Form & Lack' },
@@ -41,31 +33,17 @@ const HOURS = [
 const today = new Date().toLocaleDateString('de-DE', { weekday: 'long' });
 
 export default function BookingPage() {
-  const [calReady, setCalReady] = useState(false);
-
-  useEffect(() => {
-    if (document.querySelector(`script[src="${CAL_EMBED_SCRIPT}"]`)) {
-      setCalReady(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = CAL_EMBED_SCRIPT;
-    script.async = true;
-    script.onload = () => {
-      if (window.Cal) {
-        window.Cal('init', 'booking', { origin: CAL_ORIGIN });
-        setCalReady(true);
-      }
-    };
-    document.head.appendChild(script);
-  }, []);
+  const [modalUrl, setModalUrl] = useState<string | null>(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   const openBooking = (slug: string) => {
-    if (!window.Cal) return;
-    window.Cal.ns.booking('modal', {
-      calLink: `${CAL_USERNAME}/${slug}`,
-      config: { layout: 'month_view' },
-    });
+    setIframeLoaded(false);
+    setModalUrl(`${CAL_ORIGIN}/${CAL_USERNAME}/${slug}`);
+  };
+
+  const closeModal = () => {
+    setModalUrl(null);
+    setIframeLoaded(false);
   };
 
   return (
@@ -104,9 +82,8 @@ export default function BookingPage() {
                   </div>
                 </div>
                 <button
-                  disabled={!calReady}
                   onClick={() => openBooking(s.slug)}
-                  className="shrink-0 flex items-center gap-1.5 bg-[#1A1A1A] text-white px-5 py-2.5 text-[10px] uppercase tracking-widest font-bold rounded-lg hover:bg-zinc-700 transition-all disabled:opacity-40 group-hover:scale-[1.02]"
+                  className="shrink-0 flex items-center gap-1.5 bg-[#1A1A1A] text-white px-5 py-2.5 text-[10px] uppercase tracking-widest font-bold rounded-lg hover:bg-zinc-700 transition-all group-hover:scale-[1.02]"
                 >
                   Buchen <ChevronRight size={11} />
                 </button>
@@ -169,6 +146,45 @@ export default function BookingPage() {
       </div>
 
       <Footer />
+
+      {/* Cal.eu booking modal */}
+      {modalUrl && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-white w-full sm:rounded-2xl overflow-hidden sm:max-w-2xl h-[92vh] sm:h-[85vh] flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F0F0] shrink-0">
+              <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-[#999]">Termin buchen · Studio Cherry</p>
+              <button
+                onClick={closeModal}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 transition-colors"
+              >
+                <X size={16} className="text-[#999]" />
+              </button>
+            </div>
+
+            {/* Loading state */}
+            {!iframeLoaded && (
+              <div className="absolute inset-0 mt-14 flex items-center justify-center bg-white pointer-events-none z-10">
+                <Loader2 size={28} className="animate-spin text-[#CCC]" />
+              </div>
+            )}
+
+            {/* Cal.eu iframe */}
+            <iframe
+              src={modalUrl}
+              className="flex-1 w-full border-0"
+              onLoad={() => setIframeLoaded(true)}
+              allow="payment"
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
