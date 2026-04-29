@@ -8,8 +8,8 @@ import Image from 'next/image';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, onSnapshot, updateDoc, doc, where, limit, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { format, startOfToday, parseISO, isAfter, subDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { collection, query, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { format, startOfToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { 
   Users, 
@@ -22,7 +22,6 @@ import {
   LayoutDashboard,
   UserCheck,
   Scissors,
-  ShieldAlert,
   Trash2,
   Plus,
   Loader2,
@@ -35,7 +34,7 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 
-type Tab = 'overview' | 'bookings' | 'customers' | 'services' | 'gallery' | 'blocking';
+type Tab = 'overview' | 'bookings' | 'customers' | 'services' | 'gallery';
 
 type CmsService = { id: string; name: string; price: string; duration: string; description?: string; category?: string };
 type GalleryItem = { id: string; url: string; alt: string };
@@ -69,13 +68,8 @@ function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [bookings, setBookings] = useState<any[]>([]);
-  const [blockedTimes, setBlockedTimes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Form for blocking
-  const [blockForm, setBlockForm] = useState({ date: format(new Date(), 'yyyy-MM-dd'), time: '', note: '' });
-  const [isBlockingLoading, setIsBlockingLoading] = useState(false);
 
   // Services CMS
   const [cmsServices, setCmsServices] = useState<CmsService[]>([]);
@@ -223,43 +217,6 @@ function AdminDashboard() {
     loadGallery();
   };
 
-  useEffect(() => {
-    const qBlocks = query(collection(db, 'blocked_times'), orderBy('date', 'asc'));
-    const unsubscribeBlocks = onSnapshot(qBlocks, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBlockedTimes(data);
-    });
-    return () => unsubscribeBlocks();
-  }, []);
-
-  const handleAddBlock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsBlockingLoading(true);
-    try {
-      await addDoc(collection(db, 'blocked_times'), {
-        date: blockForm.date,
-        time: blockForm.time || null, // Empty string means full day
-        note: blockForm.note,
-        createdAt: serverTimestamp()
-      });
-      setBlockForm({ ...blockForm, time: '', note: '' });
-    } catch (error) {
-      console.error(error);
-      alert("Error blocking time");
-    } finally {
-      setIsBlockingLoading(false);
-    }
-  };
-
-  const deleteBlock = async (id: string) => {
-    if (!confirm("Diesen Block wirklich löschen?")) return;
-    try {
-      await deleteDoc(doc(db, 'blocked_times', id));
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   return (
     <main className="min-h-screen bg-[#FDFDFD] text-[#1A1A1A]">
       <Nav />
@@ -294,7 +251,6 @@ function AdminDashboard() {
             { key: 'customers', label: 'Kunden', icon: UserCheck },
             { key: 'services', label: 'Leistungen', icon: Scissors },
             { key: 'gallery', label: 'Galerie', icon: ImageIcon },
-            { key: 'blocking', label: 'Sperrzeiten', icon: ShieldAlert },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -672,105 +628,6 @@ function AdminDashboard() {
                     ))}
                   </div>
                 )}
-              </motion.div>
-            )}
-
-            {activeTab === 'blocking' && (
-              <motion.div
-                key="blocking"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="grid grid-cols-1 lg:grid-cols-3 gap-12"
-              >
-                <div className="lg:col-span-1 space-y-8">
-                  <h2 className="text-2xl font-serif italic">Zeitraum sperren</h2>
-                  <form onSubmit={handleAddBlock} className="space-y-6 p-8 bg-white border border-[#F0F0F0] rounded-lg shadow-sm">
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-widest font-bold">Datum</label>
-                      <input 
-                        type="date"
-                        required
-                        value={blockForm.date}
-                        onChange={e => setBlockForm({ ...blockForm, date: e.target.value })}
-                        className="w-full sleek-border p-4 text-xs font-light focus:outline-none focus:border-brand-ink"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-widest font-bold">Uhrzeit (Optional)</label>
-                      <select 
-                        value={blockForm.time}
-                        onChange={e => setBlockForm({ ...blockForm, time: e.target.value })}
-                        className="w-full sleek-border p-4 text-xs font-light focus:outline-none focus:border-brand-ink bg-white uppercase tracking-widest"
-                      >
-                        <option value="">Ganzer Tag</option>
-                        {['09:00', '10:30', '12:00', '14:00', '15:30', '17:00'].map(t => (
-                          <option key={t} value={t}>{t} Uhr</option>
-                        ))}
-                      </select>
-                      <p className="text-[9px] text-[#BBB] italic mt-1">* Leer lassen für ganztägige Sperrung.</p>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] uppercase tracking-widest font-bold">Notiz</label>
-                       <input 
-                        type="text"
-                        placeholder="Grund (z.B. Pause, Urlaub)"
-                        value={blockForm.note}
-                        onChange={e => setBlockForm({ ...blockForm, note: e.target.value })}
-                        className="w-full sleek-border p-4 text-xs font-light focus:outline-none focus:border-brand-ink"
-                      />
-                    </div>
-                    <button 
-                      disabled={isBlockingLoading}
-                      className="w-full py-4 bg-brand-ink text-white text-[10px] uppercase tracking-widest font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors"
-                    >
-                      {isBlockingLoading ? <Loader2 className="animate-spin" size={14} /> : <><Plus size={14} /> Sperren 확인</>}
-                    </button>
-                  </form>
-                </div>
-
-                <div className="lg:col-span-2 space-y-8">
-                  <h2 className="text-2xl font-serif italic">Aktive Sperrzeiten</h2>
-                  <div className="bg-white border border-[#F0F0F0] rounded-lg overflow-hidden shadow-sm">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="bg-[#F9F9F9] border-b border-[#F0F0F0] text-[9px] uppercase tracking-[0.2em] font-bold text-[#999]">
-                          <th className="px-8 py-5">Datum</th>
-                          <th className="px-8 py-5">Zeit / Umfang</th>
-                          <th className="px-8 py-5">Notiz</th>
-                          <th className="px-8 py-5 text-right">Aktion</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-xs divide-y divide-[#F0F0F0]">
-                        {blockedTimes.length === 0 ? (
-                          <tr><td colSpan={4} className="py-20 text-center text-[#CCC] italic">Keine Sperrzeiten definiert.</td></tr>
-                        ) : (
-                          blockedTimes.map(block => (
-                            <tr key={block.id} className="hover:bg-[#FDFDFD] transition-colors group">
-                               <td className="px-8 py-6 font-bold">{block.date}</td>
-                               <td className="px-8 py-6">
-                                 {block.time ? (
-                                   <span className="px-2 py-1 bg-brand-bg text-brand-ink rounded text-[9px] font-bold">{block.time} Uhr</span>
-                                 ) : (
-                                   <span className="px-2 py-1 bg-brand-ink text-white rounded text-[9px] font-bold uppercase tracking-widest">Ganzer Tag</span>
-                                 )}
-                               </td>
-                               <td className="px-8 py-6 text-[#999]">{block.note || '-'}</td>
-                               <td className="px-8 py-6 text-right">
-                                 <button 
-                                  onClick={() => deleteBlock(block.id)}
-                                  className="p-2 text-[#CCC] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                 >
-                                   <Trash2 size={16} />
-                                 </button>
-                               </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>

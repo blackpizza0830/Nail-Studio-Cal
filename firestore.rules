@@ -6,9 +6,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    function isSignedIn() { return request.auth != null; }
     function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
 
     // Services — public read, server-side write via Admin SDK (bypasses rules)
     match /services/{serviceId} {
@@ -43,12 +41,6 @@ service cloud.firestore {
       allow create: if isValidBooking(incoming()) && incoming().status == 'confirmed';
       allow read: if true;
       allow update: if true;
-    }
-
-    // Blocked times — public read, signed-in write
-    match /blocked_times/{blockId} {
-      allow read: if true;
-      allow write: if isSignedIn();
     }
   }
 }
