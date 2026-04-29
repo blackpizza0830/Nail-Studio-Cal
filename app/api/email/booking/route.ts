@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import { getTransporter, FROM, ADMIN_EMAIL, BASE_URL } from '@/lib/mailer';
 
 export async function POST(req: NextRequest) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jinzzang774@gmail.com';
   try {
     const { bookingId, customerName, customerEmail, customerPhone, serviceName, date, time } = await req.json();
 
@@ -12,7 +9,8 @@ export async function POST(req: NextRequest) {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    const manageUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://nail-studio-5.vercel.app'}/booking/manage/${bookingId}`;
+    const manageUrl = `${BASE_URL}/booking/manage/${bookingId}`;
+    const transporter = getTransporter();
 
     const customerHtml = `
 <!DOCTYPE html>
@@ -66,13 +64,13 @@ export async function POST(req: NextRequest) {
 </body></html>`;
 
     await Promise.all([
-      resend.emails.send({
+      transporter.sendMail({
         from: FROM,
         to: customerEmail,
         subject: `✓ Buchungsbestätigung — ${serviceName} am ${date}`,
         html: customerHtml,
       }),
-      resend.emails.send({
+      transporter.sendMail({
         from: FROM,
         to: ADMIN_EMAIL,
         subject: `[Studio Cherry] Neue Buchung: ${customerName} · ${serviceName}`,

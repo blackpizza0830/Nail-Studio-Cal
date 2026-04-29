@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import { getTransporter, FROM, ADMIN_EMAIL, BASE_URL } from '@/lib/mailer';
 
 export async function POST(req: NextRequest) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jinzzang774@gmail.com';
   try {
     const { customerName, customerEmail, serviceName, date, time } = await req.json();
 
     const dateFormatted = new Date(date).toLocaleDateString('de-DE', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
+
+    const transporter = getTransporter();
 
     const customerHtml = `
 <!DOCTYPE html>
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:13px;color:#555;margin:8px 0;"><strong>Datum:</strong> ${dateFormatted} · ${time} Uhr</p>
       </div>
       <div style="text-align:center;">
-        <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://nail-studio-5.vercel.app'}/booking" style="display:inline-block;background:#1A1A1A;color:#fff;text-decoration:none;padding:14px 32px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-family:Arial,sans-serif;">Neuen Termin buchen</a>
+        <a href="${BASE_URL}/booking" style="display:inline-block;background:#1A1A1A;color:#fff;text-decoration:none;padding:14px 32px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-family:Arial,sans-serif;">Neuen Termin buchen</a>
       </div>
     </div>
     <div style="background:#F9F9F9;padding:24px 40px;text-align:center;border-top:1px solid #F0F0F0;">
@@ -43,13 +42,13 @@ export async function POST(req: NextRequest) {
 </html>`;
 
     await Promise.all([
-      resend.emails.send({
+      transporter.sendMail({
         from: FROM,
         to: customerEmail,
         subject: `Stornierung bestätigt — ${serviceName} am ${date}`,
         html: customerHtml,
       }),
-      resend.emails.send({
+      transporter.sendMail({
         from: FROM,
         to: ADMIN_EMAIL,
         subject: `[Studio Cherry] Stornierung: ${customerName} · ${serviceName} · ${date}`,
