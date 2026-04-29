@@ -20,11 +20,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Customers — client-side upsert allowed (setDoc merge), admin-only read
+    // Customers — public self-serve create (CRM); read/update/delete for signed-in admin only.
+    // Webhook/cron writes use Admin SDK (bypass rules).
     match /customers/{customerId} {
-      allow read: if false;
-      allow write: if request.resource.data.email is string &&
-                      request.resource.data.email.size() > 0;
+      allow read: if request.auth != null;
+      allow create: if request.resource.data.email is string &&
+                       request.resource.data.email.size() > 0;
+      allow update, delete: if request.auth != null;
     }
 
     // Bookings — public create/read, update for cancellations
