@@ -1,41 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { motion } from 'motion/react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { format, parseISO, differenceInHours } from 'date-fns';
+import { doc, getDoc } from 'firebase/firestore';
+import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Calendar, Clock, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, Phone, Mail } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, Loader2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
 type Booking = {
   id: string;
   serviceName: string;
-  servicePrice?: number;
   date: string;
   time: string;
   customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  note?: string;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'rescheduled';
   source?: string;
   clientBookingUrl?: string;
-  neetoSid?: string;
 };
 
 export default function ManageBookingPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'found' | 'notfound'>('loading');
-  const [action, setAction] = useState<'idle' | 'cancelling' | 'cancelled' | 'error'>('idle');
 
   useEffect(() => {
     if (!id) return;
@@ -61,7 +54,7 @@ export default function ManageBookingPage() {
     );
   }
 
-  if (loadState === 'notfound') {
+  if (loadState === 'notfound' || !booking) {
     return (
       <main className="min-h-screen bg-white">
         <Nav />
@@ -76,40 +69,8 @@ export default function ManageBookingPage() {
     );
   }
 
-  if (!booking) return null;
-
-  const appointmentDateTime = parseISO(`${booking.date}T${booking.time}:00`);
-  const hoursUntil = differenceInHours(appointmentDateTime, new Date());
-  const canCancel = booking.status === 'confirmed' && hoursUntil >= 24;
-  const tooLate = booking.status === 'confirmed' && hoursUntil < 24 && hoursUntil > 0;
-  const isPast = hoursUntil <= 0;
   const isCancelled = booking.status === 'cancelled';
-
   const dateFormatted = format(parseISO(booking.date), 'PPPP', { locale: de });
-
-  const handleCancel = async () => {
-    if (!canCancel) return;
-    setAction('cancelling');
-    try {
-      await updateDoc(doc(db, 'bookings', id), { status: 'cancelled' });
-      // Send cancellation emails
-      await fetch('/api/email/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: booking.customerName,
-          customerEmail: booking.customerEmail,
-          serviceName: booking.serviceName,
-          date: booking.date,
-          time: booking.time,
-        }),
-      });
-      setAction('cancelled');
-      setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
-    } catch {
-      setAction('error');
-    }
-  };
 
   return (
     <main className="min-h-screen bg-white">
@@ -121,22 +82,15 @@ export default function ManageBookingPage() {
           <h1 className="text-3xl font-serif italic">Termin verwalten</h1>
         </div>
 
-        {/* Booking card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="border border-[#EFEFEF] rounded-2xl overflow-hidden mb-8"
         >
           {/* Status bar */}
-          <div className={`px-8 py-4 flex items-center gap-3 ${
-            isCancelled ? 'bg-zinc-100' :
-            isPast ? 'bg-zinc-50' :
-            'bg-brand-ink'
-          }`}>
+          <div className={`px-8 py-4 flex items-center gap-3 ${isCancelled ? 'bg-zinc-100' : 'bg-brand-ink'}`}>
             {isCancelled ? (
               <><XCircle size={16} className="text-zinc-400" /><span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Storniert</span></>
-            ) : isPast ? (
-              <><CheckCircle size={16} className="text-zinc-400" /><span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Vergangener Termin</span></>
             ) : (
               <><CheckCircle size={16} className="text-white" /><span className="text-[10px] uppercase tracking-widest font-bold text-white">Bestätigt</span></>
             )}
@@ -147,9 +101,6 @@ export default function ManageBookingPage() {
             <div>
               <p className="text-[9px] uppercase tracking-[0.3em] font-bold text-[#CCC] mb-1">Behandlung</p>
               <p className="text-lg font-serif italic text-brand-ink">{booking.serviceName}</p>
-              {booking.servicePrice && booking.servicePrice > 0 && (
-                <p className="text-[11px] text-[#999] mt-0.5">{booking.servicePrice} €</p>
-              )}
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -169,103 +120,41 @@ export default function ManageBookingPage() {
               <p className="text-[9px] uppercase tracking-[0.3em] font-bold text-[#CCC] mb-1">Name</p>
               <p className="text-sm">{booking.customerName}</p>
             </div>
-            {booking.note && (
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.3em] font-bold text-[#CCC] mb-1">Anmerkung</p>
-                <p className="text-sm text-[#666]">{booking.note}</p>
-              </div>
-            )}
           </div>
         </motion.div>
 
-        {/* Actions */}
-        {action === 'cancelled' || isCancelled ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8">
-            <p className="text-sm text-[#999] mb-6">Ihr Termin wurde erfolgreich storniert.</p>
-            <Link href="/booking" className="minimal-button px-12 py-4">Neuen Termin buchen</Link>
-          </motion.div>
-        ) : isPast ? (
-          <div className="text-center py-4">
-            <p className="text-sm text-[#CCC]">Dieser Termin ist bereits vergangen.</p>
-          </div>
-        ) : tooLate ? (
-          <div className="space-y-4">
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 flex gap-4">
-              <AlertTriangle size={20} className="text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-800 mb-1">Änderung nicht mehr möglich</p>
-                <p className="text-xs text-amber-600 leading-relaxed">
-                  Kostenlose Stornierungen und Umbuchungen sind bis <strong>24 Stunden</strong> vor dem Termin möglich.
-                  Ihr Termin ist in weniger als 24 Stunden — bitte kontaktieren Sie uns direkt.
+        {/* Cal.com manage link */}
+        {!isCancelled && (
+          <div className="space-y-3">
+            {booking.clientBookingUrl ? (
+              <a
+                href={booking.clientBookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full bg-brand-ink text-white rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:opacity-90 transition-opacity"
+              >
+                <ExternalLink size={14} />
+                Termin verschieben / stornieren
+              </a>
+            ) : (
+              <div className="bg-zinc-50 border border-[#EFEFEF] rounded-xl p-6 text-center">
+                <p className="text-sm text-[#999] leading-relaxed">
+                  Ihren Termin können Sie über den Link in Ihrer Cal.com-Bestätigungs-E-Mail verschieben oder stornieren.
                 </p>
               </div>
-            </div>
-            <div className="border border-[#EFEFEF] rounded-xl p-6 space-y-3">
-              <p className="text-[9px] uppercase tracking-[0.3em] font-bold text-[#CCC]">Studio direkt kontaktieren</p>
-              <a href="tel:+49123456789" className="flex items-center gap-3 text-sm text-[#444] hover:text-brand-ink transition-colors">
-                <Phone size={14} className="text-brand-ink" />
-                +49 123 456789
-              </a>
-              <a href="mailto:hello@studio-blanco.de" className="flex items-center gap-3 text-sm text-[#444] hover:text-brand-ink transition-colors">
-                <Mail size={14} className="text-brand-ink" />
-                hello@studio-blanco.de
-              </a>
-            </div>
-          </div>
-        ) : canCancel ? (
-          <div className="space-y-3">
-            {booking.source === 'neetocal' ? (
-              /* ── NeetoCal bookings: managed via neetocal ── */
-              <>
-                {booking.clientBookingUrl ? (
-                  <a
-                    href={booking.clientBookingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full border border-brand-ink text-brand-ink rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-brand-bg transition-colors"
-                  >
-                    <RefreshCw size={14} />
-                    Termin verschieben / stornieren
-                  </a>
-                ) : (
-                  <div className="bg-zinc-50 border border-[#EFEFEF] rounded-xl p-6 text-center">
-                    <p className="text-sm text-[#999] leading-relaxed">
-                      Ihren Termin können Sie über den Link in Ihrer Bestätigungs-E-Mail von NeetoCal verschieben oder stornieren.
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              /* ── Legacy bookings: direct cancel ── */
-              <>
-                <Link
-                  href={`/booking?reschedule=${id}`}
-                  className="flex items-center justify-center gap-2 w-full border border-brand-ink text-brand-ink rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-brand-bg transition-colors"
-                >
-                  <RefreshCw size={14} />
-                  Termin verschieben
-                </Link>
-                <button
-                  onClick={handleCancel}
-                  disabled={action === 'cancelling'}
-                  className="flex items-center justify-center gap-2 w-full border border-[#EFEFEF] text-[#999] rounded-xl py-4 text-[10px] uppercase tracking-widest font-bold hover:border-red-200 hover:text-red-400 transition-colors disabled:opacity-50"
-                >
-                  {action === 'cancelling' ? (
-                    <><Loader2 size={14} className="animate-spin" /> Wird storniert…</>
-                  ) : (
-                    <><XCircle size={14} /> Termin stornieren</>
-                  )}
-                </button>
-                {action === 'error' && (
-                  <p className="text-center text-xs text-red-400">Fehler aufgetreten. Bitte versuchen Sie es erneut.</p>
-                )}
-              </>
             )}
-            <p className="text-center text-[9px] uppercase tracking-widest text-[#CCC] pt-2">
+            <p className="text-center text-[9px] uppercase tracking-widest text-[#CCC] pt-1">
               Stornierungen kostenlos bis 24h vor dem Termin
             </p>
           </div>
-        ) : null}
+        )}
+
+        {isCancelled && (
+          <div className="text-center">
+            <p className="text-sm text-[#999] mb-6">Ihr Termin wurde storniert.</p>
+            <Link href="/booking" className="minimal-button px-12 py-4">Neuen Termin buchen</Link>
+          </div>
+        )}
 
         <div className="mt-12 text-center">
           <Link href="/" className="text-[10px] uppercase tracking-widest font-bold text-[#CCC] hover:text-brand-ink transition-colors">

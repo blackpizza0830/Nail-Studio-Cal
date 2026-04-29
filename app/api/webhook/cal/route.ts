@@ -30,17 +30,25 @@ interface CalWebhookBody {
   payload: CalPayload;
 }
 
-function verifySignature(body: string, signature: string | null, secret: string | undefined): boolean {
-  if (!secret || !signature) return !secret; // If no secret set, skip verification
+function verifySignature(body: string, signature: string | null, secret: string): boolean {
+  if (!signature) return false;
   const expected = createHmac('sha256', secret).update(body).digest('hex');
+  // Cal.com sends "sha256=<hex>" format
   return `sha256=${expected}` === signature;
 }
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get('X-Cal-Signature-256');
+  const secret = process.env.CAL_WEBHOOK_SECRET;
 
-  if (!verifySignature(rawBody, signature, process.env.CAL_WEBHOOK_SECRET)) {
+  if (!secret) {
+    console.error('[cal webhook] CAL_WEBHOOK_SECRET is not set — rejecting request');
+    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+  }
+
+  if (!verifySignature(rawBody, signature, secret)) {
+    console.warn('[cal webhook] Invalid signature — possible spoofed request');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
