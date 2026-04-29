@@ -1,38 +1,62 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
+import { getCalApi } from '@calcom/embed-react';
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
-import { motion, AnimatePresence } from 'motion/react';
-import { Clock, ChevronLeft, ExternalLink, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Clock } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
-// ─── Service display cards ───────────────────────────────────────────────────
-// 카드는 서비스 정보 표시용 — 클릭 시 아래 neetocal 임베드가 열림
+// ─── Cal.com config ───────────────────────────────────────────────────────────
+// calLink: "username/event-slug"
+// 서비스별 Cal.com 이벤트 타입을 만들면 아래 calLink를 각각 지정할 수 있습니다.
+// 지금은 하나의 이벤트 타입("30min")을 모든 서비스에 공유합니다.
+const CAL_USERNAME = 'hyeonjin-sun-park-vocrbh';
+const CAL_DEFAULT_SLUG = '30min';
+
 const SERVICES = [
-  { id: 'manikuere-klassisch',  name: 'Maniküre Klassisch',   priceLabel: '35 €',      duration: '45 Min',  desc: 'Pflege, Form & Lack' },
-  { id: 'gel-manikuere',        name: 'Gel-Maniküre',         priceLabel: '48 €',      duration: '60 Min',  desc: 'Langanhaltend & strapazierfähig' },
-  { id: 'naildesign-nailart',   name: 'Naildesign / Nailart', priceLabel: '68 €',      duration: '90 Min',  desc: 'Kreative Designs & Nail Art' },
-  { id: 'auffullen-gel',        name: 'Auffüllen Gel',        priceLabel: '42 €',      duration: '60 Min',  desc: 'Auffüllen bestehender Gelnägel' },
-  { id: 'french-nails',         name: 'French Nails',         priceLabel: '55 €',      duration: '75 Min',  desc: 'Der Klassiker — zeitlos & elegant' },
-  { id: 'babyboomer',           name: 'Babyboomer',           priceLabel: '58 €',      duration: '75 Min',  desc: 'Natürlicher Ombré-Look' },
-  { id: 'nagelverlangerung',    name: 'Nagelverlängerung',    priceLabel: '75 €',      duration: '120 Min', desc: 'Verlängerung & Modellage' },
-  { id: 'entfernung',           name: 'Entfernung',           priceLabel: '20 €',      duration: '30 Min',  desc: 'Schonende Gel- oder Acrylentfernung' },
-  { id: 'beratung',             name: 'Beratung',             priceLabel: 'Kostenlos', duration: '15 Min',  desc: 'Persönliche Beratung vorab' },
+  { id: 'manikuere-klassisch',  name: 'Maniküre Klassisch',   priceLabel: '35 €',      duration: '45 Min',  desc: 'Pflege, Form & Lack',                  calSlug: CAL_DEFAULT_SLUG },
+  { id: 'gel-manikuere',        name: 'Gel-Maniküre',         priceLabel: '48 €',      duration: '60 Min',  desc: 'Langanhaltend & strapazierfähig',       calSlug: CAL_DEFAULT_SLUG },
+  { id: 'naildesign-nailart',   name: 'Naildesign / Nailart', priceLabel: '68 €',      duration: '90 Min',  desc: 'Kreative Designs & Nail Art',           calSlug: CAL_DEFAULT_SLUG },
+  { id: 'auffullen-gel',        name: 'Auffüllen Gel',        priceLabel: '42 €',      duration: '60 Min',  desc: 'Auffüllen bestehender Gelnägel',        calSlug: CAL_DEFAULT_SLUG },
+  { id: 'french-nails',         name: 'French Nails',         priceLabel: '55 €',      duration: '75 Min',  desc: 'Der Klassiker — zeitlos & elegant',     calSlug: CAL_DEFAULT_SLUG },
+  { id: 'babyboomer',           name: 'Babyboomer',           priceLabel: '58 €',      duration: '75 Min',  desc: 'Natürlicher Ombré-Look',                calSlug: CAL_DEFAULT_SLUG },
+  { id: 'nagelverlangerung',    name: 'Nagelverlängerung',    priceLabel: '75 €',      duration: '120 Min', desc: 'Verlängerung & Modellage',              calSlug: CAL_DEFAULT_SLUG },
+  { id: 'entfernung',           name: 'Entfernung',           priceLabel: '20 €',      duration: '30 Min',  desc: 'Schonende Gel- oder Acrylentfernung',   calSlug: CAL_DEFAULT_SLUG },
+  { id: 'beratung',             name: 'Beratung',             priceLabel: 'Kostenlos', duration: '15 Min',  desc: 'Persönliche Beratung vorab',            calSlug: CAL_DEFAULT_SLUG },
 ];
-
-// neetocal 전체 페이지를 임베드 — 서비스 선택 후 neetocal 자체 UI에서 예약 진행
-const NEETOCAL_EMBED_URL = 'https://nail-studio.neetocal.com';
-
-type Service = (typeof SERVICES)[number];
 
 function BookingContent() {
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service');
 
-  const initialService = SERVICES.find(s => s.id === serviceParam) ?? null;
-  const [selected, setSelected] = useState<Service | null>(initialService);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
+  // Cal.com embed 초기화 — 팝업 UI 설정
+  useEffect(() => {
+    (async () => {
+      const cal = await getCalApi({ namespace: 'nail-studio' });
+      cal('ui', {
+        hideEventTypeDetails: false,
+        layout: 'month_view',
+        theme: 'light',
+      });
+    })();
+  }, []);
+
+  // URL에 ?service=xxx 파라미터가 있으면 즉시 해당 서비스로 팝업 열기
+  useEffect(() => {
+    if (!serviceParam) return;
+    const service = SERVICES.find(s => s.id === serviceParam);
+    if (!service) return;
+
+    (async () => {
+      const cal = await getCalApi({ namespace: 'nail-studio' });
+      cal('modal', {
+        calLink: `${CAL_USERNAME}/${service.calSlug}`,
+        config: { layout: 'month_view' },
+      });
+    })();
+  }, [serviceParam]);
 
   return (
     <main className="min-h-screen bg-white">
@@ -43,108 +67,53 @@ function BookingContent() {
         <div className="mb-16">
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#999] mb-2">Studio Cherry</p>
           <h1 className="text-3xl font-serif italic">Termin buchen</h1>
+          <p className="text-sm text-[#999] mt-3 font-light">
+            Behandlung wählen — der Kalender öffnet sich direkt.
+          </p>
         </div>
 
-        <AnimatePresence mode="wait">
-
-          {/* ── Step 1: Service selection ── */}
-          {!selected && (
-            <motion.div
-              key="services"
-              initial={{ opacity: 0, y: 16 }}
+        {/* Service grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          {SERVICES.map((s, i) => (
+            <motion.button
+              key={s.id}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.25 }}
+              transition={{ delay: i * 0.04, duration: 0.25 }}
+              // Cal.com popup trigger — data 속성으로 연결
+              data-cal-namespace="nail-studio"
+              data-cal-link={`${CAL_USERNAME}/${s.calSlug}`}
+              data-cal-config={JSON.stringify({ layout: 'month_view' })}
+              className="text-left p-6 border border-[#EFEFEF] rounded-xl hover:border-brand-ink hover:shadow-sm transition-all cursor-pointer group"
             >
-              <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#999] mb-8">
-                Behandlung wählen
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {SERVICES.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setSelected(s); setIframeLoaded(false); }}
-                    className="text-left p-6 border border-[#EFEFEF] rounded-xl hover:border-brand-ink hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-medium text-sm leading-snug pr-2">{s.name}</h3>
-                      <span className="font-serif italic text-brand-ink shrink-0">{s.priceLabel}</span>
-                    </div>
-                    <p className="text-[11px] text-[#BBB] mb-4 leading-relaxed">{s.desc}</p>
-                    <div className="flex items-center gap-1 text-[10px] text-[#999] font-medium">
-                      <Clock size={10} /> {s.duration}
-                    </div>
-                  </button>
-                ))}
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="font-medium text-sm leading-snug pr-2 group-hover:text-brand-ink transition-colors">
+                  {s.name}
+                </h3>
+                <span className="font-serif italic text-brand-ink shrink-0">{s.priceLabel}</span>
               </div>
-            </motion.div>
-          )}
-
-          {/* ── Step 2: NeetoCal embed ── */}
-          {selected && (
-            <motion.div
-              key="embed"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.25 }}
-            >
-              {/* Back + summary bar */}
-              <div className="flex items-center justify-between mb-8">
-                <button
-                  onClick={() => { setSelected(null); setIframeLoaded(false); }}
-                  className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[#999] hover:text-brand-ink font-bold transition-colors"
-                >
-                  <ChevronLeft size={14} /> Zurück
-                </button>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="font-serif italic text-brand-ink">{selected.name}</span>
-                  <span className="text-[#999] text-[11px]">
-                    <Clock size={10} className="inline mr-1" />{selected.duration}
-                  </span>
-                  <span className="font-bold text-sm">{selected.priceLabel}</span>
+              <p className="text-[11px] text-[#BBB] mb-4 leading-relaxed">{s.desc}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-[10px] text-[#999] font-medium">
+                  <Clock size={10} /> {s.duration}
                 </div>
+                <span className="text-[9px] uppercase tracking-widest font-bold text-[#CCC] group-hover:text-brand-ink transition-colors">
+                  Buchen →
+                </span>
               </div>
+            </motion.button>
+          ))}
+        </motion.div>
 
-              {/* NeetoCal iframe */}
-              <div className="rounded-2xl overflow-hidden border border-[#F0F0F0] shadow-sm relative">
-                {/* Loading spinner */}
-                {!iframeLoaded && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#FAFAFA] min-h-[400px]">
-                    <Loader2 className="animate-spin text-brand-ink" size={28} />
-                    <p className="text-[10px] uppercase tracking-widest text-[#CCC]">Kalender wird geladen…</p>
-                  </div>
-                )}
-                <iframe
-                  src={NEETOCAL_EMBED_URL}
-                  title={`Termin buchen — ${selected.name}`}
-                  className="w-full border-none"
-                  style={{ minHeight: '750px', display: iframeLoaded ? 'block' : 'block' }}
-                  allow="payment"
-                  onLoad={() => setIframeLoaded(true)}
-                />
-              </div>
+        <p className="text-[9px] uppercase tracking-widest text-[#CCC] text-center mt-12 leading-relaxed">
+          Stornierungen kostenlos bis 24h vor dem Termin · Buchung gesichert via Cal.com
+        </p>
 
-              {/* Fallback link if iframe is blocked */}
-              <div className="flex items-center justify-center gap-2 mt-4">
-                <a
-                  href={NEETOCAL_EMBED_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#AAA] hover:text-brand-ink transition-colors font-bold"
-                >
-                  <ExternalLink size={11} />
-                  Kalender in neuem Tab öffnen
-                </a>
-              </div>
-
-              <p className="text-[9px] uppercase tracking-widest text-[#CCC] text-center mt-3 leading-relaxed">
-                Stornierungen kostenlos bis 24h vor dem Termin · Buchung gesichert via NeetoCal
-              </p>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
       </section>
       <Footer />
     </main>
