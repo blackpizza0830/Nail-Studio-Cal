@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday, isSameDay, isBefore, eachDayOfInterval, startOfMonth, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
-import { collection, serverTimestamp, query, where, onSnapshot, doc, setDoc, updateDoc, increment, runTransaction } from 'firebase/firestore';
+import { collection, serverTimestamp, query, where, onSnapshot, doc, setDoc, updateDoc, increment, addDoc } from 'firebase/firestore';
 import { ChevronLeft, Check, Loader2, Clock, Euro } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -88,28 +88,20 @@ function BookingContent() {
     setLoading(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     try {
-      // Use transaction to prevent double booking
-      let bookingId = '';
-      // Check availability first (non-transactional read for simplicity)
-      const slotRef = doc(collection(db, 'bookings'));
-      bookingId = slotRef.id;
-      await runTransaction(db, async (tx) => {
-        const ref = slotRef;
-        tx.set(ref, {
-          serviceId: selectedService.id,
-          serviceName: selectedService.name,
-          servicePrice: selectedService.price,
-          date: dateStr,
-          time: selectedTime,
-          customerName: form.name,
-          customerEmail: form.email,
-          customerPhone: form.phone,
-          note: form.note,
-          status: 'confirmed',
-          createdAt: serverTimestamp(),
-        });
+      const docRef = await addDoc(collection(db, 'bookings'), {
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        servicePrice: selectedService.price,
+        date: dateStr,
+        time: selectedTime,
+        customerName: form.name,
+        customerEmail: form.email,
+        customerPhone: form.phone,
+        note: form.note,
+        status: 'confirmed',
+        createdAt: serverTimestamp(),
       });
-      setLastBookingId(bookingId);
+      setLastBookingId(docRef.id);
 
       // Upsert customer — non-blocking, doesn't affect booking success
       const customerId = form.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -123,6 +115,7 @@ function BookingContent() {
       }, { merge: true }).catch(console.error);
 
       // Send email (fire and forget)
+      const bookingId = docRef.id;
       fetch('/api/email/booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
