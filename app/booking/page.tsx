@@ -108,17 +108,16 @@ function BookingContent() {
       });
       setLastBookingId(bookingId);
 
-      // Upsert customer (merge: true = create if new, update if exists — no read required)
+      // Upsert customer — non-blocking, doesn't affect booking success
       const customerId = form.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
-      const customerRef = doc(db, 'customers', customerId);
-      await setDoc(customerRef, {
+      setDoc(doc(db, 'customers', customerId), {
         name: form.name,
         email: form.email,
         phone: form.phone,
         lastVisit: serverTimestamp(),
         visitCount: increment(1),
         points: increment(10),
-      }, { merge: true });
+      }, { merge: true }).catch(console.error);
 
       // Send email (fire and forget)
       fetch('/api/email/booking', {
