@@ -55,15 +55,29 @@ export async function POST(req: NextRequest) {
   const attendee = payload.attendees?.[0];
   if (!attendee) return NextResponse.json({ ok: true });
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  // Lazy email helper — survives missing RESEND_API_KEY without crashing webhook
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
   const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jinzzang774@gmail.com';
+
+  const sendMail = async (args: { to: string; subject: string; html: string }) => {
+    if (!resend) {
+      console.warn('[cal webhook] RESEND_API_KEY missing — skipping email to', args.to);
+      return;
+    }
+    try {
+      await resend.emails.send({ from: FROM, ...args });
+    } catch (err) {
+      console.error('[cal webhook] Email send failed:', err);
+    }
+  };
 
   const startDate = new Date(payload.startTime);
   const dateStr = format(startDate, 'yyyy-MM-dd');
   const timeStr = format(startDate, 'HH:mm');
   const dateFormatted = format(startDate, 'PPP', { locale: de });
-  const BOOKING_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://nail-studio-5.vercel.app';
+  const BOOKING_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://nail-studio-cal.vercel.app';
 
   try {
     const db = getAdminDb();
@@ -147,14 +161,12 @@ export async function POST(req: NextRequest) {
 </body></html>`;
 
       await Promise.all([
-        resend.emails.send({
-          from: FROM,
+        sendMail({
           to: attendee.email,
           subject: `✓ Buchungsbestätigung — ${payload.title} am ${dateStr}`,
           html: customerHtml,
         }),
-        resend.emails.send({
-          from: FROM,
+        sendMail({
           to: ADMIN_EMAIL,
           subject: `[Studio Cherry] Neue Buchung: ${attendee.name} · ${payload.title}`,
           html: `<div style="font-family:Arial,sans-serif;padding:32px;max-width:480px;">
@@ -182,8 +194,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Send cancellation email
-      await resend.emails.send({
-        from: FROM,
+      await sendMail({
         to: attendee.email,
         subject: `Stornierung bestätigt — ${payload.title}`,
         html: `
@@ -225,8 +236,7 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(),
       });
 
-      await resend.emails.send({
-        from: FROM,
+      await sendMail({
         to: attendee.email,
         subject: `Termin verschoben — ${payload.title} am ${dateStr}`,
         html: `<p>Ihr Termin wurde auf ${dateFormatted} · ${timeStr} Uhr verschoben.</p>`,
