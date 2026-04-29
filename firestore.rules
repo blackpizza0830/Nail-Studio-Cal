@@ -22,15 +22,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Customers — server-side read/write via Admin SDK; client-side upsert allowed
-    function isValidCustomer(data) {
-      return data.name is string && data.name.size() > 0 &&
-             data.email is string && data.email.size() > 5;
-    }
+    // Customers — client-side upsert allowed (setDoc merge), admin-only read
     match /customers/{customerId} {
       allow read: if false;
-      allow create: if isValidCustomer(incoming());
-      allow update: if isValidCustomer(incoming());
+      allow write: if request.resource.data.email is string &&
+                      request.resource.data.email.size() > 0;
     }
 
     // Bookings — public create/read, update for cancellations

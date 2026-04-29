@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday, isSameDay, isBefore, eachDayOfInterval, startOfMonth, getDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
-import { collection, serverTimestamp, query, where, onSnapshot, doc, setDoc, getDoc, updateDoc, increment, runTransaction } from 'firebase/firestore';
+import { collection, serverTimestamp, query, where, onSnapshot, doc, setDoc, updateDoc, increment, runTransaction } from 'firebase/firestore';
 import { ChevronLeft, Check, Loader2, Clock, Euro } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -108,15 +108,17 @@ function BookingContent() {
       });
       setLastBookingId(bookingId);
 
-      // Upsert customer
+      // Upsert customer (merge: true = create if new, update if exists — no read required)
       const customerId = form.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const customerRef = doc(db, 'customers', customerId);
-      const customerSnap = await getDoc(customerRef);
-      if (customerSnap.exists()) {
-        await updateDoc(customerRef, { lastVisit: serverTimestamp(), visitCount: increment(1), points: increment(10), phone: form.phone });
-      } else {
-        await setDoc(customerRef, { name: form.name, email: form.email, phone: form.phone, points: 10, visitCount: 1, createdAt: serverTimestamp(), lastVisit: serverTimestamp() });
-      }
+      await setDoc(customerRef, {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        lastVisit: serverTimestamp(),
+        visitCount: increment(1),
+        points: increment(10),
+      }, { merge: true });
 
       // Send email (fire and forget)
       fetch('/api/email/booking', {
