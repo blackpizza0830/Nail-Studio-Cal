@@ -5,7 +5,9 @@ import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 import { collection, query, orderBy, onSnapshot, updateDoc, doc, where, limit, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { format, startOfToday, parseISO, isAfter, subDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -39,6 +41,33 @@ type CmsService = { id: string; name: string; price: string; duration: string; d
 type GalleryItem = { id: string; url: string; alt: string };
 
 export default function AdminPage() {
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthed(true);
+      } else {
+        router.replace('/admin/login');
+      }
+      setAuthChecked(true);
+    });
+    return () => unsub();
+  }, [router]);
+
+  if (!authChecked) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-brand-ink border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-[10px] uppercase tracking-widest text-[#CCC]">Laden...</p>
+      </div>
+    </div>
+  );
+
+  if (!isAuthed) return null;
+
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [bookings, setBookings] = useState<any[]>([]);
   const [blockedTimes, setBlockedTimes] = useState<any[]>([]);
@@ -245,8 +274,13 @@ export default function AdminPage() {
               Willkommen zurück, 전용 관리자 모드
             </p>
           </div>
-          <div className="flex gap-4">
-            <button className="minimal-button py-3 px-6 text-[10px]">Einstellungen</button>
+          <div className="flex gap-4 items-center">
+            <button
+              onClick={() => signOut(auth).then(() => router.push('/admin/login'))}
+              className="text-[10px] uppercase tracking-widest font-bold text-[#CCC] hover:text-red-400 transition-colors"
+            >
+              Abmelden
+            </button>
             <div className="w-10 h-10 rounded-full bg-brand-bg flex items-center justify-center border border-brand-border">
               <Users size={16} />
             </div>
