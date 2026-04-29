@@ -6,11 +6,17 @@ import Link from 'next/link';
 
 const SERVICES = [
   {
-    category: "Nails",
+    category: "Nägel",
     items: [
-      { name: "Classic Manicüre", price: "35,00 €", duration: "45 Min", desc: "Formen, Nagelhautpflege & Massage" },
-      { name: "Shellac Manicüre", price: "55,00 €", duration: "60 Min", desc: "Inkl. Farbauftrag & Hochglanz-Finish" },
-      { name: "Gel Neumodellage", price: "85,00 €", duration: "90 Min", desc: "Verlängerung mit Schablone" },
+      { name: "Maniküre Klassisch",   price: "35 €",      duration: "45 Min",  desc: "Pflege, Form & Lack" },
+      { name: "Gel-Maniküre",         price: "48 €",      duration: "60 Min",  desc: "Langanhaltend & strapazierfähig" },
+      { name: "Naildesign / Nailart", price: "68 €",      duration: "90 Min",  desc: "Kreative Designs & Nail Art" },
+      { name: "Auffüllen Gel",        price: "42 €",      duration: "60 Min",  desc: "Auffüllen bestehender Gelnägel" },
+      { name: "French Nails",         price: "55 €",      duration: "75 Min",  desc: "Der Klassiker — zeitlos & elegant" },
+      { name: "Babyboomer",           price: "58 €",      duration: "75 Min",  desc: "Natürlicher Ombré-Look" },
+      { name: "Nagelverlängerung",    price: "75 €",      duration: "120 Min", desc: "Verlängerung & Modellage" },
+      { name: "Entfernung",           price: "20 €",      duration: "30 Min",  desc: "Schonende Gel- oder Acrylentfernung" },
+      { name: "Beratung",             price: "Kostenlos", duration: "15 Min",  desc: "Persönliche Beratung vorab" },
     ]
   },
 ];

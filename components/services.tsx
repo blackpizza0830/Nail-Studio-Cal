@@ -4,12 +4,17 @@ import { motion } from 'motion/react';
 
 const SERVICE_CATEGORIES = [
   {
-    title: "Nail Care",
+    title: "Nägel",
     items: [
-      { name: "Classic Manicure", price: "35€", duration: "45 min" },
-      { name: "Shellac Manicure", price: "55€", duration: "60 min" },
-      { name: "Gel Extensions", price: "85€", duration: "90 min" },
-      { name: "Refill Gel", price: "65€", duration: "75 min" },
+      { name: "Maniküre Klassisch",   price: "35 €",      duration: "45 min" },
+      { name: "Gel-Maniküre",         price: "48 €",      duration: "60 min" },
+      { name: "Naildesign / Nailart", price: "68 €",      duration: "90 min" },
+      { name: "Auffüllen Gel",        price: "42 €",      duration: "60 min" },
+      { name: "French Nails",         price: "55 €",      duration: "75 min" },
+      { name: "Babyboomer",           price: "58 €",      duration: "75 min" },
+      { name: "Nagelverlängerung",    price: "75 €",      duration: "120 min" },
+      { name: "Entfernung",           price: "20 €",      duration: "30 min" },
+      { name: "Beratung",             price: "Kostenlos", duration: "15 min" },
     ]
   },
 ];
