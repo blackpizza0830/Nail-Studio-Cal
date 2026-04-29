@@ -337,14 +337,24 @@ function BookingContent() {
               <p className="text-[10px] uppercase tracking-widest text-[#CCC] mb-10">
                 Bestätigung geht an {form.email}
               </p>
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-3 w-full max-w-xs mx-auto">
+                <Link href="/" className="minimal-button w-full py-4 text-center">Zurück zur Startseite</Link>
                 {lastBookingId && (
-                  <Link href={`/booking/manage/${lastBookingId}`}
-                    className="text-[10px] uppercase tracking-widest font-bold text-brand-ink border-b border-brand-ink pb-0.5">
-                    Termin verwalten / stornieren →
-                  </Link>
+                  <>
+                    <Link
+                      href={`/booking?reschedule=${lastBookingId}`}
+                      className="w-full py-4 text-center border border-brand-ink text-brand-ink rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-brand-bg transition-colors"
+                    >
+                      Termin verschieben
+                    </Link>
+                    <Link
+                      href={`/booking/manage/${lastBookingId}`}
+                      className="w-full py-4 text-center border border-[#EFEFEF] text-[#999] rounded-xl text-[10px] uppercase tracking-widest font-bold hover:border-red-200 hover:text-red-400 transition-colors"
+                    >
+                      Termin stornieren
+                    </Link>
+                  </>
                 )}
-                <Link href="/" className="minimal-button px-12 py-4">Zurück zur Startseite</Link>
               </div>
             </motion.div>
           )}
