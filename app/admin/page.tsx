@@ -8,8 +8,8 @@ import Image from 'next/image';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
-import { format, startOfToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { collection, query, orderBy, onSnapshot, updateDoc, doc, runTransaction } from 'firebase/firestore';
+import { format, startOfToday, parseISO, startOfWeek, endOfWeek, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { 
   Users, 
@@ -34,6 +34,7 @@ import {
   MessageCircle,
   AlertTriangle,
   StickyNote,
+  UserX,
 } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
@@ -68,6 +69,7 @@ type CustomerDb = {
   memo?: string;
   photoUrl?: string;
   vip?: boolean;
+  no_show_count?: number;
 };
 
 type MergedCustomerRow = {
@@ -249,15 +251,25 @@ function AdminDashboard() {
     });
 
     const activeCustomers = new Set(bookings.map(b => b.customerEmail)).size;
-    
+
     // Revenue simulation (based on services)
     const revenue = weeklyBookings.reduce((acc, curr) => acc + (curr.price ? parseInt(curr.price) : 50), 0);
+
+    const monthStart = startOfMonth(new Date());
+    const monthEnd = endOfMonth(new Date());
+    const monthlyNoShows = bookings.filter(b => {
+      if (b.status !== 'no_show' || !b.date) return false;
+      try {
+        return isWithinInterval(parseISO(b.date), { start: monthStart, end: monthEnd });
+      } catch { return false; }
+    }).length;
 
     return {
       todayCount: todayBookings.length,
       weeklyCount: weeklyBookings.length,
       customerCount: activeCustomers,
-      estWeeklyRevenue: revenue
+      estWeeklyRevenue: revenue,
+      monthlyNoShows,
     };
   }, [bookings]);
 
@@ -314,6 +326,26 @@ function AdminDashboard() {
       await updateDoc(doc(db, 'bookings', id), { status });
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const markNoShow = async (bookingId: string, customerEmail: string) => {
+    if (!confirm('노쇼로 처리하시겠습니까?')) return;
+    try {
+      await runTransaction(db, async (tx) => {
+        const bookingRef = doc(db, 'bookings', bookingId);
+        const customerId = (customerEmail || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const customerRef = customerId ? doc(db, 'customers', customerId) : null;
+        const customerSnap = customerRef ? await tx.get(customerRef) : null;
+        tx.update(bookingRef, { status: 'no_show' });
+        if (customerRef && customerSnap?.exists()) {
+          const current = (customerSnap.data()?.no_show_count as number | undefined) ?? 0;
+          tx.update(customerRef, { no_show_count: current + 1 });
+        }
+      });
+    } catch (e) {
+      console.error('markNoShow:', e);
+      alert('Fehler beim Markieren als No-Show.');
     }
   };
 
@@ -448,12 +480,13 @@ function AdminDashboard() {
                 className="space-y-12"
               >
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                   {[
                     { label: 'Heute', value: metrics.todayCount, icon: Clock, color: 'text-brand-ink' },
                     { label: 'Woche', value: metrics.weeklyCount, icon: Calendar, color: 'text-blue-500' },
                     { label: 'Kunden', value: metrics.customerCount, icon: Users, color: 'text-purple-500' },
                     { label: 'Umsatz', value: `${metrics.estWeeklyRevenue} €`, icon: TrendingUp, color: 'text-green-500' },
+                    { label: 'No-Shows / Monat', value: metrics.monthlyNoShows, icon: UserX, color: 'text-amber-600' },
                   ].map((stat, i) => (
                     <div key={i} className="p-6 md:p-8 bg-white border border-[#F0F0F0] rounded-lg shadow-sm">
                       <div className="flex justify-between items-center mb-4 md:mb-6">
@@ -559,25 +592,41 @@ function AdminDashboard() {
                                 <span className="px-2 py-1 bg-brand-bg text-brand-ink rounded text-[9px] font-bold uppercase">{b.serviceName}</span>
                               </td>
                               <td className="px-8 py-6">
-                                <div className={`flex items-center gap-2 ${
-                                  b.status === 'confirmed' ? 'text-green-500' : 'text-red-400'
-                                }`}>
-                                  <div className={`w-1.5 h-1.5 rounded-full ${
-                                    b.status === 'confirmed' ? 'bg-green-500' : 'bg-red-400'
-                                  }`} />
-                                  <span className="uppercase tracking-widest text-[9px] font-bold">{b.status}</span>
-                                </div>
+                                {(() => {
+                                  const styles: Record<string, { color: string; dot: string; label: string }> = {
+                                    confirmed: { color: 'text-green-500', dot: 'bg-green-500', label: 'confirmed' },
+                                    no_show: { color: 'text-amber-600', dot: 'bg-amber-500', label: 'no-show' },
+                                    done: { color: 'text-blue-500', dot: 'bg-blue-500', label: 'done' },
+                                    cancelled: { color: 'text-red-400', dot: 'bg-red-400', label: 'cancelled' },
+                                  };
+                                  const s = styles[b.status] ?? { color: 'text-[#999]', dot: 'bg-[#CCC]', label: b.status };
+                                  return (
+                                    <div className={`flex items-center gap-2 ${s.color}`}>
+                                      <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                                      <span className="uppercase tracking-widest text-[9px] font-bold">{s.label}</span>
+                                    </div>
+                                  );
+                                })()}
                               </td>
                               <td className="px-8 py-6 text-right">
-                                <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   {b.status === 'confirmed' && (
-                                    <button 
-                                      onClick={() => updateStatus(b.id, 'cancelled')}
-                                      className="p-2 text-red-400 hover:text-red-600 transition-colors"
-                                      title="Stornieren"
-                                    >
-                                      <XCircle size={16} />
-                                    </button>
+                                    <>
+                                      <button
+                                        onClick={() => markNoShow(b.id, b.customerEmail)}
+                                        className="p-2 text-[#BBB] hover:text-amber-600 transition-colors"
+                                        title="Als No-Show markieren"
+                                      >
+                                        <UserX size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => updateStatus(b.id, 'cancelled')}
+                                        className="p-2 text-red-400 hover:text-red-600 transition-colors"
+                                        title="Stornieren"
+                                      >
+                                        <XCircle size={16} />
+                                      </button>
+                                    </>
                                   )}
                                   <button className="p-2 text-[#CCC] hover:text-[#888] transition-colors">
                                     <MoreVertical size={16} />
@@ -640,6 +689,8 @@ function AdminDashboard() {
                       const visitCount = d?.visitCount ?? visits;
                       const points = d?.points ?? 0;
                       const vip = isVipHint(visitCount, points, d?.vip);
+                      const noShowCount = d?.no_show_count ?? 0;
+                      const noShowFlag = noShowCount >= 3;
                       const hist = sortBookingsChrono(row.bookings)
                         .filter((b) => b.status === 'confirmed')
                         .slice(-4)
@@ -670,7 +721,17 @@ function AdminDashboard() {
                             )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="font-semibold text-sm truncate">{row.name}</p>
+                                <div className="min-w-0 flex items-center gap-2">
+                                  <p className="font-semibold text-sm truncate">{row.name}</p>
+                                  {noShowFlag && (
+                                    <span
+                                      title={`${noShowCount} No-Shows`}
+                                      className="shrink-0 inline-flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full"
+                                    >
+                                      <AlertTriangle size={10} /> {noShowCount}
+                                    </span>
+                                  )}
+                                </div>
                                 {vip && (
                                   <span className="shrink-0 inline-flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                                     <Crown size={10} /> VIP
