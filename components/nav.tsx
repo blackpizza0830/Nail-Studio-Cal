@@ -18,10 +18,30 @@ export function Nav() {
         
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-10 text-[11px] uppercase tracking-widest text-brand-gray font-medium">
-          <Link href="/#leistungen" className="hover:text-brand-ink transition-colors">Leistungen</Link>
-          <Link href="/#ueber-uns" className="hover:text-brand-ink transition-colors">Über Uns</Link>
-          <Link href="/#kontakt" className="hover:text-brand-ink transition-colors">Kontakt</Link>
-          <Link href="/booking" className="text-brand-ink border-b border-brand-ink pb-1">Buchen</Link>
+          {[
+            { href: '/#leistungen', label: 'Leistungen' },
+            { href: '/#ueber-uns', label: 'Über Uns' },
+            { href: '/#kontakt', label: 'Kontakt' },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="relative group py-2 hover:text-brand-ink transition-colors duration-300"
+            >
+              {item.label}
+              <span className="absolute left-0 -bottom-0.5 h-px w-0 bg-brand-ink transition-all duration-500 ease-out group-hover:w-full" />
+            </Link>
+          ))}
+          <Link
+            href="/booking"
+            className="relative overflow-hidden inline-flex items-center justify-center px-6 py-2.5 border border-brand-ink text-brand-ink group transition-colors duration-500 hover:text-white"
+          >
+            <span className="relative z-10">Buchen</span>
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-brand-ink scale-x-0 origin-left transition-transform duration-500 ease-[cubic-bezier(0.65,0,0.35,1)] group-hover:scale-x-100"
+            />
+          </Link>
         </div>
 
         {/* Mobile Toggle */}
