@@ -11,3 +11,6 @@ coverage/
 # Firebase service account keys — never commit
 *firebase-adminsdk*.json
 .env.production.test
+
+# ShipStudio metadata
+.shipstudio/
