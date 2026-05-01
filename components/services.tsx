@@ -25,7 +25,7 @@ export function Services() {
     <section id="leistungen" className="py-24 border-t border-zinc-100">
       <div className="flex flex-col md:flex-row gap-16">
         <div className="md:w-1/3">
-          <h2 className="text-4xl md:text-5xl font-serif mb-6">Leistungen</h2>
+          <h2 className="text-4xl md:text-5xl font-sans font-light tracking-tight mb-6">Leistungen</h2>
           <p className="text-zinc-500 font-light text-sm leading-relaxed">
             Hochwertige Produkte und Liebe zum Detail. Jede Behandlung wird individuell auf Ihre Bedürfnisse abgestimmt.
           </p>
@@ -40,17 +40,17 @@ export function Services() {
               viewport={{ once: true }}
               transition={{ delay: idx * 0.2 }}
             >
-              <h3 className="text-xs uppercase tracking-widest font-bold mb-8 text-zinc-400 border-b border-zinc-50 pb-4">
+              <h3 className="text-sm font-sans font-semibold tracking-wide mb-8 text-zinc-500 border-b border-zinc-100 pb-4">
                 {category.title}
               </h3>
               <div className="space-y-4">
                 {category.items.map((item) => (
                   <div key={item.name} className="flex items-center justify-between gap-4 py-4 border-b border-zinc-50 group">
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium">{item.name}</h4>
-                      <p className="text-[11px] text-brand-gray opacity-70">{item.duration} • Professional Care</p>
+                      <h4 className="text-base font-sans font-medium tracking-tight text-brand-ink">{item.name}</h4>
+                      <p className="text-xs text-brand-gray mt-1">{item.duration} • Professional Care</p>
                     </div>
-                    <span className="text-sm font-serif italic text-brand-gray group-hover:text-brand-ink shrink-0">
+                    <span className="text-sm font-sans font-medium text-brand-ink shrink-0 tabular-nums">
                       {item.price}
                     </span>
                     <Link

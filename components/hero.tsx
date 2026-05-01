@@ -6,9 +6,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 const HERO_IMAGES = [
-  "https://picsum.photos/seed/nail-hero-1/1920/1080?blur=1",
-  "https://picsum.photos/seed/nail-studio-2/1920/1080?grayscale",
-  "https://picsum.photos/seed/minimalist-nail-3/1920/1080",
+  "/hero/hero-1.jpg",
+  "/hero/hero-2.jpg",
+  "/hero/hero-3.jpg",
 ];
 
 export function Hero() {
@@ -17,7 +17,7 @@ export function Hero() {
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 5000);
+    }, 3500);
     return () => clearInterval(timer);
   }, []);
 
@@ -25,13 +25,13 @@ export function Hero() {
     <section className="relative h-[calc(100vh-6rem)] w-full overflow-hidden flex items-center justify-center border-b border-brand-border">
       {/* Background Slider */}
       <div className="absolute inset-0 z-0">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           <motion.div
             key={HERO_IMAGES[index]}
-            initial={{ opacity: 0, scale: 1.1 }}
+            initial={{ opacity: 0, scale: 1.05 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
             className="absolute inset-0"
           >
             <Image
@@ -40,7 +40,7 @@ export function Hero() {
               fill
               className="object-cover brightness-[0.85]"
               priority
-              referrerPolicy="no-referrer"
+              sizes="100vw"
             />
           </motion.div>
         </AnimatePresence>

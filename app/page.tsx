@@ -16,10 +16,12 @@ export default function Home() {
       <Nav />
       <div>
         <Hero />
+        <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-16">
+          <Gallery />
+          <Services />
+        </div>
         <Testimonials />
         <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-32">
-          <Services />
-          <Gallery />
           <About />
           <section id="kontakt" className="py-24 border-t border-brand-border text-center">
             <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-brand-gray mb-8 block">Kontakt</span>

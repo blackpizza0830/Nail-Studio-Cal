@@ -9,11 +9,11 @@ export function About() {
       <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
         <div className="w-full lg:w-1/2 aspect-[4/5] relative bg-brand-bg overflow-hidden sleek-border">
           <Image
-            src="https://picsum.photos/seed/studio-owner/800/1000"
-            alt="Studio Owner"
+            src="/about/studio.jpg"
+            alt="Studio Cherry"
             fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
             className="object-cover"
-            referrerPolicy="no-referrer"
           />
         </div>
         
