@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Resend } from 'resend';
 import { format } from 'date-fns';
@@ -33,8 +33,15 @@ interface CalWebhookBody {
 function verifySignature(body: string, signature: string | null, secret: string): boolean {
   if (!signature) return false;
   const expected = createHmac('sha256', secret).update(body).digest('hex');
-  // Cal.com sends "sha256=<hex>" format
-  return `sha256=${expected}` === signature;
+  // Cal.com sends the raw hex digest with no prefix.
+  // Accept the bare form, and tolerate "sha256=" in case Cal.com ever changes format.
+  const provided = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+  if (provided.length !== expected.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(provided, 'hex'), Buffer.from(expected, 'hex'));
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: NextRequest) {
