@@ -55,7 +55,17 @@ export async function POST(req: NextRequest) {
   }
 
   if (!verifySignature(rawBody, signature, secret)) {
-    console.warn('[cal webhook] Invalid signature — possible spoofed request');
+    const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
+    const allHeaders: Record<string, string> = {};
+    req.headers.forEach((v, k) => { if (k.toLowerCase().startsWith('x-cal') || k === 'content-type') allHeaders[k] = v; });
+    console.warn('[cal webhook] signature mismatch', {
+      receivedSignature: signature,
+      expectedSignature: expected,
+      bodyLength: rawBody.length,
+      bodyPreview: rawBody.slice(0, 120),
+      secretLength: secret.length,
+      calHeaders: allHeaders,
+    });
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
